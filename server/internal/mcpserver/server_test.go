@@ -88,13 +88,49 @@ func errorText(res *mcp.CallToolResult) string {
 	return ""
 }
 
+// TestToolOutputSchemasAreObjectRooted guards against the whole bug class
+// reported in production: a Go slice's inferred JSON Schema has type
+// ["null","array"] at the root (nilable), which some MCP clients' output
+// validation rejects even though the MCP spec itself allows it. Every tool
+// here must return an object at the top level (see listProjectsResult /
+// listTicketsResult for how list-shaped tools do this) — this test fails
+// for any future tool that regresses to a bare array/slice Out type.
+func TestToolOutputSchemasAreObjectRooted(t *testing.T) {
+	session, _ := newTestSession(t)
+	tools, err := session.ListTools(context.Background(), &mcp.ListToolsParams{})
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	if len(tools.Tools) == 0 {
+		t.Fatal("expected at least one tool")
+	}
+	for _, tool := range tools.Tools {
+		if tool.OutputSchema == nil {
+			continue
+		}
+		data, err := json.Marshal(tool.OutputSchema)
+		if err != nil {
+			t.Fatalf("%s: marshal output schema: %v", tool.Name, err)
+		}
+		var schema struct {
+			Type any `json:"type"`
+		}
+		if err := json.Unmarshal(data, &schema); err != nil {
+			t.Fatalf("%s: decode output schema: %v", tool.Name, err)
+		}
+		if typeStr, ok := schema.Type.(string); !ok || typeStr != "object" {
+			t.Errorf("%s: output schema root type is %v (%T), want the plain string \"object\"", tool.Name, schema.Type, schema.Type)
+		}
+	}
+}
+
 func TestListProjectsTool(t *testing.T) {
 	session, _ := newTestSession(t)
-	out, res := callTool[[]projectInfo](t, session, "list_projects", map[string]any{})
+	out, res := callTool[listProjectsResult](t, session, "list_projects", map[string]any{})
 	if res.IsError {
 		t.Fatalf("unexpected error: %s", errorText(res))
 	}
-	if len(out) != 1 || out[0].Name != "DanceNote" || out[0].Metrics.Total != 4 {
+	if len(out.Projects) != 1 || out.Projects[0].Name != "DanceNote" || out.Projects[0].Metrics.Total != 4 {
 		t.Fatalf("unexpected result: %+v", out)
 	}
 }
@@ -130,16 +166,30 @@ func TestGetProjectUnknown(t *testing.T) {
 	}
 }
 
+func TestListTicketsTool(t *testing.T) {
+	session, _ := newTestSession(t)
+	out, res := callTool[listTicketsResult](t, session, "list_tickets", map[string]any{
+		"project": "DanceNote",
+		"status":  "done",
+	})
+	if res.IsError {
+		t.Fatalf("unexpected error: %s", errorText(res))
+	}
+	if len(out.Tickets) != 2 {
+		t.Fatalf("expected 2 done tickets, got %d: %+v", len(out.Tickets), out.Tickets)
+	}
+}
+
 func TestSearchTicketsTool(t *testing.T) {
 	session, _ := newTestSession(t)
-	out, res := callTool[[]ticket.Ticket](t, session, "search_tickets", map[string]any{
+	out, res := callTool[listTicketsResult](t, session, "search_tickets", map[string]any{
 		"project": "DanceNote",
 		"query":   "worker",
 	})
 	if res.IsError {
 		t.Fatalf("unexpected error: %s", errorText(res))
 	}
-	if len(out) != 1 || out[0].ID != "DN-42" {
+	if len(out.Tickets) != 1 || out.Tickets[0].ID != "DN-42" {
 		t.Fatalf("unexpected result: %+v", out)
 	}
 }

@@ -71,7 +71,18 @@ func toProjectInfo(name string, p *project.Project) projectInfo {
 	return projectInfo{Name: name, Description: snap.Description, Version: snap.Version, Metrics: p.Metrics()}
 }
 
-func (s *server) listProjects(_ context.Context, _ *mcp.CallToolRequest, _ listProjectsArgs) (*mcp.CallToolResult, []projectInfo, error) {
+// listProjectsResult wraps the project list in a named field rather than
+// returning a bare array. A Go slice's inferred JSON Schema has type
+// ["null","array"] at the root (nilable), and some MCP clients' output
+// validation chokes on a non-"object" root schema even though the MCP spec
+// itself (post SEP-2106) allows it. Every other tool here already returns
+// an object; this keeps list-shaped tools consistent with that and
+// sidesteps the client compatibility gap entirely.
+type listProjectsResult struct {
+	Projects []projectInfo `json:"projects"`
+}
+
+func (s *server) listProjects(_ context.Context, _ *mcp.CallToolRequest, _ listProjectsArgs) (*mcp.CallToolResult, listProjectsResult, error) {
 	names := make([]string, 0, len(s.projects))
 	for name := range s.projects {
 		names = append(names, name)
@@ -82,7 +93,7 @@ func (s *server) listProjects(_ context.Context, _ *mcp.CallToolRequest, _ listP
 	for _, name := range names {
 		out = append(out, toProjectInfo(name, s.projects[name]))
 	}
-	return nil, out, nil
+	return nil, listProjectsResult{Projects: out}, nil
 }
 
 // --- get_project ---
@@ -171,10 +182,15 @@ type listTicketsArgs struct {
 	Parent   string `json:"parent,omitempty" jsonschema:"filter by parent ticket id"`
 }
 
-func (s *server) listTickets(_ context.Context, _ *mcp.CallToolRequest, args listTicketsArgs) (*mcp.CallToolResult, []ticket.Ticket, error) {
+// listTicketsResult wraps the ticket list — see listProjectsResult for why.
+type listTicketsResult struct {
+	Tickets []ticket.Ticket `json:"tickets"`
+}
+
+func (s *server) listTickets(_ context.Context, _ *mcp.CallToolRequest, args listTicketsArgs) (*mcp.CallToolResult, listTicketsResult, error) {
 	p, err := s.project(args.Project)
 	if err != nil {
-		return nil, nil, err
+		return nil, listTicketsResult{}, err
 	}
 
 	var filter project.TicketFilter
@@ -201,7 +217,7 @@ func (s *server) listTickets(_ context.Context, _ *mcp.CallToolRequest, args lis
 	if tickets == nil {
 		tickets = []ticket.Ticket{}
 	}
-	return nil, tickets, nil
+	return nil, listTicketsResult{Tickets: tickets}, nil
 }
 
 // --- get_ticket ---
@@ -230,10 +246,10 @@ type searchTicketsArgs struct {
 	Query   string `json:"query" jsonschema:"text to match against title, description, and tags"`
 }
 
-func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args searchTicketsArgs) (*mcp.CallToolResult, []ticket.Ticket, error) {
+func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args searchTicketsArgs) (*mcp.CallToolResult, listTicketsResult, error) {
 	p, err := s.project(args.Project)
 	if err != nil {
-		return nil, nil, err
+		return nil, listTicketsResult{}, err
 	}
 	q := strings.ToLower(strings.TrimSpace(args.Query))
 	var matches []ticket.Ticket
@@ -248,7 +264,7 @@ func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args s
 	if matches == nil {
 		matches = []ticket.Ticket{}
 	}
-	return nil, matches, nil
+	return nil, listTicketsResult{Tickets: matches}, nil
 }
 
 // --- create_ticket ---
