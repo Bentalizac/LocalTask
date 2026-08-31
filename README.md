@@ -15,7 +15,7 @@ give a coding agent access to exactly the same context.
 ## Quick start (Docker)
 
 ```sh
-git clone <this repo>
+git clone https://github.com/Bentalizac/LocalTask.git
 cd LocalTask
 mkdir -p projects
 cat > projects/taskboard.config.yaml <<'EOF'
@@ -85,7 +85,7 @@ the placeholders:
 ## Task tracking
 
 This project's tasks live in `taskboard.json` (plus any Markdown under `docs/`),
-tracked with [LocalTask](<this repo's URL>), running locally at
+tracked with [LocalTask](https://github.com/Bentalizac/LocalTask), running locally at
 http://taskboard.localhost:8420. Project name in LocalTask: `<PROJECT_NAME>` —
 if unsure, call `list_projects` via MCP or check `taskboard.config.yaml` in the
 LocalTask deployment.
