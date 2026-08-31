@@ -53,7 +53,7 @@ export function DashboardPage() {
 
   const blocked = tickets.filter((t) => t.status === 'blocked')
   const ready = tickets.filter((t) => t.status === 'ready')
-  const epics = tickets.filter((t) => t.type === 'epic')
+  const epics = tickets.filter((t) => t.type === 'epic' && t.status !== 'done')
   const recent = [...tickets].slice(-6).reverse()
 
   return (
