@@ -1,0 +1,11 @@
+# Local runtime data — machine-specific project paths/config, never source.
+# See compose.yaml for the mount convention these correspond to.
+/projects/
+/code/
+
+# OS cruft
+.DS_Store
+
+# Go build output (nothing is checked in as a binary)
+/server/taskboard-server
+/server/taskboard-mcp

@@ -1,0 +1,150 @@
+# LocalTask
+
+A lightweight, local-only Jira-like task tracker for software projects. It runs
+entirely on your machine, reads and writes plain JSON (`taskboard.json`) that
+lives in each project's own repo, and exposes that data to both a web UI and
+coding agents (via [MCP](https://modelcontextprotocol.io)) through the same
+underlying service — so a human in the browser and an agent working through
+MCP always see consistent state.
+
+This is **not** an attempt to reproduce Jira. It's a small, fast,
+developer-oriented layer over your existing coding projects: open a project,
+immediately see what needs doing, what's blocked, what's in progress, and
+give a coding agent access to exactly the same context.
+
+## Quick start (Docker)
+
+```sh
+git clone <this repo>
+cd LocalTask
+mkdir -p projects
+cat > projects/taskboard.config.yaml <<'EOF'
+projects:
+  - name: MyProject
+    path: /projects/my-project
+EOF
+docker compose up -d --build
+```
+
+Then open **http://taskboard.localhost:8420** (any `*.localhost` hostname
+resolves to `127.0.0.1` automatically — no `/etc/hosts` edit needed).
+
+`projects/` on your host is bind-mounted to `/projects` in the container (see
+`compose.yaml`) — put project subdirectories there, or mount other host paths
+in the same file if your projects live elsewhere. Each entry in
+`taskboard.config.yaml` points at one, by its container-side path. If a
+project directory has no `taskboard.json` yet, the "Add Project" button in the
+UI will bootstrap an empty one.
+
+The host port (`8420` by default) only binds to `127.0.0.1` — the app is
+never exposed beyond localhost. See `compose.yaml` for the full explanation
+of why the container itself binds `0.0.0.0` internally without weakening that.
+
+## Local development (no Docker)
+
+Backend:
+
+```sh
+cd server
+go run ./cmd/server -config ../projects/taskboard.config.yaml -port 8420
+```
+
+Frontend (proxies `/api` to the Go server above):
+
+```sh
+cd web
+npm install
+LOCALTASK_API_URL=http://127.0.0.1:8420 npm run dev
+```
+
+Run the backend test suite with `go test ./...` from `server/`.
+
+## MCP server
+
+A separate binary, `taskboard-mcp`, exposes the same project/ticket data to a
+coding agent over stdio:
+
+```sh
+cd server
+go build -o taskboard-mcp ./cmd/mcp
+```
+
+Point your MCP client at the built binary with `-config` pointing to your
+`taskboard.config.yaml`. Tools: `list_projects`, `get_project`,
+`get_project_context`, `list_tickets`, `get_ticket`, `search_tickets`,
+`create_ticket`, `update_ticket`. Resources: `project://<name>`,
+`project://<name>/context`, `project://<name>/ticket/<id>`,
+`project://<name>/doc/<path>`.
+
+### Using it from a coding agent's `CLAUDE.md`
+
+Drop this into the `CLAUDE.md` of any repo tracked in LocalTask, filling in
+the placeholders:
+
+```markdown
+## Task tracking
+
+This project's tasks live in `taskboard.json` (plus any Markdown under `docs/`),
+tracked with [LocalTask](<this repo's URL>), running locally at
+http://taskboard.localhost:8420. Project name in LocalTask: `<PROJECT_NAME>` —
+if unsure, call `list_projects` via MCP or check `taskboard.config.yaml` in the
+LocalTask deployment.
+
+- **Before starting non-trivial work**, check for an existing ticket covering it
+  (`search_tickets`/`list_tickets` via MCP, or read `taskboard.json` directly).
+  Don't duplicate tracked work.
+- **As you work**, keep the ticket's status and acceptance criteria current —
+  move it to `in_progress`, then `review` when done. Only check off an
+  acceptance criterion once you've actually verified it.
+- **Discovered follow-up work** (bugs found, scope you're deliberately not
+  doing now) gets filed as a new ticket, not done inline and not silently
+  dropped.
+- **If the `taskboard-mcp` MCP server is connected**, use its tools
+  (`create_ticket`, `update_ticket`) for any change — it validates the result
+  and writes atomically, which a direct edit to `taskboard.json` doesn't.
+  **If it isn't connected**, read/edit `taskboard.json` directly; it's plain
+  JSON for exactly this reason. Match the existing ticket shape (`id`, `title`,
+  `type`, `status`, `priority`; see other entries in the file for the rest).
+- Don't invent new `status`/`priority`/`type` values — use what's already in
+  the file's existing tickets.
+- You can point the user at http://taskboard.localhost:8420 to see the board
+  in a browser — useful to mention after a batch of ticket updates.
+```
+
+The `taskboard-mcp` server also sends its own workflow instructions to any
+connecting agent automatically (see `internal/mcpserver/server.go`) — the
+snippet above is a complement to that, not a replacement.
+
+## Repository layout
+
+```
+server/           Go backend
+  cmd/server/      HTTP API + web UI (Docker's entrypoint)
+  cmd/mcp/         MCP server (stdio)
+  internal/        domain logic, shared by both binaries
+  testdata/        fixtures used by the test suite
+web/               React + TypeScript + Vite frontend
+compose.yaml       Docker deployment
+Dockerfile         multi-stage build (frontend + both Go binaries)
+```
+
+## Ticket model
+
+Tickets support `id`, `title`, `status`, `priority`, `type` (required), plus
+`description`, `parent`, `depends_on`, `acceptance_criteria`, `constraints`,
+`tags`, `related_docs`, and `related_code`. Statuses:
+`backlog`/`ready`/`in_progress`/`blocked`/`review`/`done`/`cancelled`.
+Priorities: `low`/`medium`/`high`/`critical`. Types:
+`epic`/`story`/`task`/`bug`/`subtask`.
+
+## Security model
+
+Local-only by design: no authentication, no cloud sync, no telemetry, no
+outbound requests. The HTTP server binds `127.0.0.1` directly when run
+outside Docker; in Docker, the host-side port publish (`127.0.0.1:...` in
+`compose.yaml`) is what keeps it off the LAN. Reads/writes of a project's
+`taskboard.json` and docs are constrained to that project's own root — the
+one deliberate exception is the "Add Project" directory browser, which can
+list any directory the server process can read, by design (see
+`internal/browse`), since its entire purpose is finding a new project
+before it's configured.

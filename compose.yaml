@@ -1,0 +1,25 @@
+services:
+  taskboard:
+    build: .
+    ports:
+      # Host side only binds to 127.0.0.1 — this is what keeps the app off
+      # the LAN (see spec §22). Do not change this to expose more broadly.
+      # Host port 8420 (left free for other dev work) forwards to the
+      # container's internal 8080. Reachable at http://taskboard.localhost:8420
+      # — any *.localhost hostname resolves to 127.0.0.1 with no /etc/hosts
+      # entry needed.
+      - "127.0.0.1:8420:8080"
+    volumes:
+      # Mount a directory containing your project subdirectories AND a
+      # taskboard.config.yaml at its root that references them by their
+      # container-side path, e.g.:
+      #
+      #   projects:
+      #     - name: DanceNote
+      #       path: /projects/dance-note
+      #
+      # DanceNote's own files (taskboard.json, docs/, source) then live at
+      # ./projects/dance-note on the host.
+      - ./projects:/projects
+      - /Users/samuelellsworth/Code:/code
+    restart: unless-stopped

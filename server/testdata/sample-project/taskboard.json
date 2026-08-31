@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "project": "DanceNote",
+  "description": "AI-powered ballroom dance coaching platform",
+  "tickets": [
+    {
+      "id": "DN-30",
+      "title": "Video upload and processing pipeline",
+      "description": "Epic covering upload, processing, and status tracking for dance videos.",
+      "type": "epic",
+      "status": "in_progress",
+      "priority": "high",
+      "tags": ["backend", "video"]
+    },
+    {
+      "id": "DN-38",
+      "title": "Job schema",
+      "description": "Define the processing job schema and storage.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "parent": "DN-30",
+      "tags": ["backend"]
+    },
+    {
+      "id": "DN-40",
+      "title": "Upload pipeline",
+      "description": "Accept and store uploaded dance videos.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "parent": "DN-30",
+      "tags": ["backend", "video"]
+    },
+    {
+      "id": "DN-42",
+      "title": "Implement video processing worker",
+      "description": "Implement the worker that processes uploaded dance videos.",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "parent": "DN-30",
+      "depends_on": ["DN-38", "DN-40"],
+      "acceptance_criteria": [
+        { "id": "DN-42-ac1", "text": "Worker claims pending processing jobs", "complete": true },
+        { "id": "DN-42-ac2", "text": "Job status changes to processing", "complete": true },
+        { "id": "DN-42-ac3", "text": "Successful processing marks the job complete", "complete": false }
+      ],
+      "constraints": ["Processing must be idempotent", "Do not introduce Redis"],
+      "tags": ["backend", "video"],
+      "related_docs": ["docs/video-processing.md"],
+      "related_code": ["server/internal/video/", "server/internal/jobs/"]
+    }
+  ]
+}
