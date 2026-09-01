@@ -338,6 +338,7 @@ button {
   height: calc(100vh - 56px);
   min-height: 0;
   overflow: hidden;
+  max-width: none;
 }
 
 .board {
@@ -395,7 +396,11 @@ button {
 }
 
 .board-column {
-  flex: 0 0 260px;
+  /* Grows to fill wide screens (basis 260px, shared out evenly beyond
+     that); shrinks back down to 220px on narrow ones before the board's
+     own horizontal scroll takes over rather than squeezing further. */
+  flex: 1 1 260px;
+  min-width: 220px;
   display: flex;
   flex-direction: column;
   gap: 10px;
