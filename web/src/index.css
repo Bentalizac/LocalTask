@@ -350,6 +350,38 @@ button {
   min-height: 0;
 }
 
+/* Thin, low-contrast scrollbars for the board's horizontal scroll and each
+   column's vertical scroll — visible on demand, not competing for
+   attention. Firefox via scrollbar-width/-color; WebKit/Chromium/Safari
+   via the ::-webkit-scrollbar-* pseudo-elements. */
+.board,
+.board-column-cards {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.board::-webkit-scrollbar,
+.board-column-cards::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.board::-webkit-scrollbar-track,
+.board-column-cards::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board::-webkit-scrollbar-thumb,
+.board-column-cards::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.board::-webkit-scrollbar-thumb:hover,
+.board-column-cards::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
 .board-column {
   flex: 0 0 260px;
   display: flex;
