@@ -324,12 +324,24 @@ button {
 
 /* Kanban */
 
+/* Bounds the board page to the viewport (minus the 56px topbar) so columns
+   scroll internally instead of growing the whole page — every other page
+   keeps the normal document-scroll behavior; this is opt-in per page. */
+.page-board {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
 .board {
   display: flex;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 12px;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 .board-column {
@@ -337,6 +349,13 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  border-radius: var(--radius);
+  transition: background-color 0.1s ease;
+}
+
+.board-column.drag-over {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .board-column-header {
@@ -344,6 +363,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 4px 4px 8px;
+  flex-shrink: 0;
 }
 
 .board-column-title {
@@ -363,7 +383,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 40px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 4px;
 }
 
 .ticket-card {
@@ -371,10 +394,16 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: grab;
 }
 
 .ticket-card:hover {
   border-color: #d8d3c8;
+}
+
+.ticket-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
 }
 
 .ticket-card-top {

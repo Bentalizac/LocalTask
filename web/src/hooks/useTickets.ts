@@ -19,8 +19,19 @@ export function useTickets(project: string) {
   }, [reload])
 
   async function setStatus(id: string, status: TicketStatus) {
+    const current = tickets?.find((t) => t.id === id)
+    if (!current || current.status === status) return
+
     const prev = tickets
-    setTickets((cur) => cur?.map((t) => (t.id === id ? { ...t, status } : t)) ?? cur)
+    // Move it to the end of the list, not just update in place — since
+    // column order is just array order, this makes a drag-and-drop land
+    // at the bottom of the destination column instead of wherever the
+    // ticket's original position happens to fall.
+    setTickets((cur) => {
+      if (!cur) return cur
+      const rest = cur.filter((t) => t.id !== id)
+      return [...rest, { ...current, status }]
+    })
     try {
       await updateTicket(project, id, { status })
     } catch (err) {

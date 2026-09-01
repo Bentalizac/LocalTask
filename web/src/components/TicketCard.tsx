@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { PriorityBadge, TypeBadge } from './Badges'
 import type { Ticket, TicketStatus } from '../types'
@@ -10,15 +11,28 @@ interface Props {
 }
 
 export function TicketCard({ project, ticket, onStatusChange }: Props) {
+  const [isDragging, setIsDragging] = useState(false)
   const criteria = ticket.acceptance_criteria ?? []
   const complete = criteria.filter((c) => c.complete).length
 
   return (
-    <div className="card ticket-card">
+    <div
+      className={`card ticket-card${isDragging ? ' dragging' : ''}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', ticket.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setIsDragging(true)
+      }}
+      onDragEnd={() => setIsDragging(false)}
+    >
       <div className="ticket-card-top">
         <span>{ticket.id}</span>
       </div>
-      <Link to={`/projects/${encodeURIComponent(project)}/tickets/${encodeURIComponent(ticket.id)}`}>
+      <Link
+        draggable={false}
+        to={`/projects/${encodeURIComponent(project)}/tickets/${encodeURIComponent(ticket.id)}`}
+      >
         <div className="ticket-card-title">{ticket.title}</div>
       </Link>
       <div className="ticket-card-badges">
