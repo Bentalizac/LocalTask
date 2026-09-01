@@ -350,13 +350,20 @@ button {
   min-height: 0;
 }
 
-/* Thin, low-contrast scrollbars for the board's horizontal scroll and each
-   column's vertical scroll — visible on demand, not competing for
-   attention. Firefox via scrollbar-width/-color; WebKit/Chromium/Safari
-   via the ::-webkit-scrollbar-* pseudo-elements. */
+/* Scrollbars for the board's horizontal scroll and each column's vertical
+   scroll are invisible until you hover the container — wheel/trackpad
+   scrolling requires the cursor to be over the element to target it in the
+   first place, so hover already covers "while scrolling" for any real
+   input, no JS scroll-listener needed. Firefox via scrollbar-width/-color;
+   WebKit/Chromium/Safari via the ::-webkit-scrollbar-* pseudo-elements. */
 .board,
 .board-column-cards {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.board:hover,
+.board-column-cards:hover {
   scrollbar-color: var(--border) transparent;
 }
 
@@ -373,8 +380,13 @@ button {
 
 .board::-webkit-scrollbar-thumb,
 .board-column-cards::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: transparent;
   border-radius: 999px;
+}
+
+.board:hover::-webkit-scrollbar-thumb,
+.board-column-cards:hover::-webkit-scrollbar-thumb {
+  background: var(--border);
 }
 
 .board::-webkit-scrollbar-thumb:hover,
