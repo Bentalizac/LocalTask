@@ -326,11 +326,17 @@ button {
 
 /* Bounds the board page to the viewport (minus the 56px topbar) so columns
    scroll internally instead of growing the whole page — every other page
-   keeps the normal document-scroll behavior; this is opt-in per page. */
+   keeps the normal document-scroll behavior; this is opt-in per page.
+   flex: none overrides the flex:1 (flex-basis:0%) inherited from .page,
+   which otherwise wins over the explicit height below; min-height: 0
+   overrides flex's default min-height:auto, which otherwise refuses to
+   shrink the box below its content's natural (taller-than-viewport) size. */
 .page-board {
   display: flex;
   flex-direction: column;
+  flex: none;
   height: calc(100vh - 56px);
+  min-height: 0;
   overflow: hidden;
 }
 
