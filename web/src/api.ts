@@ -44,8 +44,9 @@ export function getProject(project: string): Promise<ProjectSummary> {
   return request(`/api/projects/${encodeURIComponent(project)}`)
 }
 
-export function listTickets(project: string): Promise<Ticket[]> {
-  return request(`/api/projects/${encodeURIComponent(project)}/tickets`)
+export function listTickets(project: string, filters?: { parent?: string }): Promise<Ticket[]> {
+  const qs = filters?.parent ? `?parent=${encodeURIComponent(filters.parent)}` : ''
+  return request(`/api/projects/${encodeURIComponent(project)}/tickets${qs}`)
 }
 
 export function getTicket(project: string, ticketId: string): Promise<Ticket> {

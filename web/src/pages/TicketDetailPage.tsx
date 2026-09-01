@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getTicket, updateTicket } from '../api'
+import { getTicket, listTickets, updateTicket } from '../api'
 import { PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 import type { Ticket } from '../types'
@@ -12,6 +12,7 @@ export function TicketDetailPage() {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<{ title: string; description: string; tags: string; constraints: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [children, setChildren] = useState<Ticket[]>([])
 
   function load() {
     setError(null)
@@ -24,6 +25,13 @@ export function TicketDetailPage() {
     setTicket(null)
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, ticketId])
+
+  useEffect(() => {
+    setChildren([])
+    listTickets(project, { parent: ticketId })
+      .then(setChildren)
+      .catch(() => setChildren([]))
   }, [project, ticketId])
 
   async function patch(fields: Parameters<typeof updateTicket>[2]) {
@@ -145,6 +153,27 @@ export function TicketDetailPage() {
                   <input type="checkbox" checked={c.complete} onChange={() => toggleCriterion(i)} />
                   <span className="ac-text">{c.text}</span>
                 </label>
+              ))
+            )}
+          </div>
+
+          <div className="detail-section">
+            <h2 className="section-title">
+              Children {children.length > 0 && `(${children.filter((c) => c.status === 'done').length}/${children.length} done)`}
+            </h2>
+            {children.length === 0 ? (
+              <div className="empty-note">No child tickets.</div>
+            ) : (
+              children.map((child) => (
+                <Link
+                  key={child.id}
+                  to={`/projects/${encodeURIComponent(project)}/tickets/${encodeURIComponent(child.id)}`}
+                  className="mini-ticket-row"
+                >
+                  <span className="mini-ticket-id">{child.id}</span>
+                  <span className="mini-ticket-title">{child.title}</span>
+                  <StatusBadge status={child.status} />
+                </Link>
               ))
             )}
           </div>
