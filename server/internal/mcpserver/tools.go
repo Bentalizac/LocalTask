@@ -94,15 +94,17 @@ type listProjectsResult struct {
 }
 
 func (s *server) listProjects(_ context.Context, _ *mcp.CallToolRequest, _ listProjectsArgs) (*mcp.CallToolResult, listProjectsResult, error) {
-	names := make([]string, 0, len(s.projects))
-	for name := range s.projects {
+	s.refresh()
+	projects := s.registry.List()
+	names := make([]string, 0, len(projects))
+	for name := range projects {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
 	out := make([]projectInfo, 0, len(names))
 	for _, name := range names {
-		out = append(out, toProjectInfo(name, s.projects[name]))
+		out = append(out, toProjectInfo(name, projects[name]))
 	}
 	return nil, listProjectsResult{Projects: out}, nil
 }

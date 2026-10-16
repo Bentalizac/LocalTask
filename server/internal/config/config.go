@@ -83,6 +83,12 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// Path returns the file the config was loaded from (or will be saved to).
+// It is empty for a Config built without one.
+func (c *Config) Path() string {
+	return c.path
+}
+
 // Save writes the config back to the file it was loaded from, atomically.
 func (c *Config) Save() error {
 	if c.path == "" {

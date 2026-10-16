@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			log.Printf("no config file at %s — starting with zero projects configured", *configPath)
-			cfg = &config.Config{}
+			cfg = config.New(*configPath)
 		} else {
 			log.Fatalf("loading config: %v", err)
 		}
@@ -38,17 +38,18 @@ func main() {
 		log.Printf("skipping %v", err)
 	}
 	if len(projects) == 0 {
-		log.Printf("no projects loaded — list_projects will return an empty list until the config is fixed and the server restarted")
+		log.Printf("no projects loaded — list_projects will pick up projects as they are added to the config")
 	}
 	for name := range projects {
 		log.Printf("loaded project %q", name)
 	}
 
-	if _, err := watch.Start(projects, nil); err != nil {
+	watcher, err := watch.Start(projects, nil)
+	if err != nil {
 		log.Printf("filesystem watching disabled: %v", err)
 	}
 
-	srv := mcpserver.New(projects)
+	srv := mcpserver.New(registry.NewRegistry(cfg, projects, watcher))
 	if err := srv.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}

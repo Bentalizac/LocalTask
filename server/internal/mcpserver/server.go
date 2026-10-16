@@ -6,10 +6,12 @@ package mcpserver
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"localtask/internal/project"
+	"localtask/internal/registry"
 )
 
 // instructions is shown to a connecting agent once, at session start (see
@@ -34,10 +36,12 @@ Use update_ticket/create_ticket for every change. They validate the result (uniq
 
 The board is usually stored outside the project's repo, so the repo may have no taskboard.json. Never create one there, and don't add LocalTask notes or ignore rules to the repo. If the repo does have a taskboard.json, you may read it for quick context.`
 
-// New builds an MCP server exposing tools and resources over the given
-// projects, keyed by configured name.
-func New(projects map[string]*project.Project) *mcp.Server {
-	s := &server{projects: projects}
+// New builds an MCP server exposing tools and resources over the projects
+// in reg. A lookup that misses re-reads the config first (see
+// registry.Registry.Refresh), so a project added after this server started
+// is found without a restart.
+func New(reg *registry.Registry) *mcp.Server {
+	s := &server{registry: reg}
 
 	srv := mcp.NewServer(
 		&mcp.Implementation{Name: "taskboard-mcp", Version: "0.1.0"},
@@ -49,13 +53,24 @@ func New(projects map[string]*project.Project) *mcp.Server {
 }
 
 type server struct {
-	projects map[string]*project.Project
+	registry *registry.Registry
 }
 
 func (s *server) project(name string) (*project.Project, error) {
-	p, ok := s.projects[name]
+	if p, ok := s.registry.Get(name); ok {
+		return p, nil
+	}
+	s.refresh()
+	p, ok := s.registry.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("project %q not found", name)
 	}
 	return p, nil
+}
+
+// refresh picks up projects added to the config since this server started.
+func (s *server) refresh() {
+	for _, err := range s.registry.Refresh() {
+		log.Printf("refreshing config: %v", err)
+	}
 }

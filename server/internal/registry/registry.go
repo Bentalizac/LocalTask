@@ -188,3 +188,46 @@ func (r *Registry) Add(name, path string, store config.Storage) (*project.Projec
 	r.projects[name] = p
 	return p, nil
 }
+
+// Refresh re-reads the config file and loads every project it names that
+// isn't registered yet, wiring each into the watcher. This is how a
+// long-lived process sees a project another process added to the config —
+// e.g. an MCP session started before the web UI added that project.
+// Projects already registered are kept as they are. A project that fails
+// to load is reported in errs and left out. Refresh is a no-op when the
+// Registry has no config file to read.
+func (r *Registry) Refresh() []error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.cfg == nil || r.cfg.Path() == "" {
+		return nil
+	}
+	fresh, err := config.Load(r.cfg.Path())
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return []error{err}
+	}
+
+	var errs []error
+	for _, pc := range fresh.Projects {
+		if _, ok := r.projects[pc.Name]; ok {
+			continue
+		}
+		p, err := load(fresh, pc, pc.EffectiveStorage() == config.StorageExternal)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("project %q: %w", pc.Name, err))
+			continue
+		}
+		if r.watcher != nil {
+			if err := r.watcher.Add(p); err != nil {
+				log.Printf("registry: watching %q failed (external edits won't auto-reload): %v", pc.Name, err)
+			}
+		}
+		r.projects[pc.Name] = p
+	}
+	r.cfg = fresh
+	return errs
+}

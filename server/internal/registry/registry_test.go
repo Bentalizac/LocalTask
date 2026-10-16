@@ -204,3 +204,50 @@ func TestLoadCreatesMissingExternalBoardOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestRefreshLoadsProjectsAddedToConfig(t *testing.T) {
+	configPath := writeConfig(t, "projects: []\n")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	reg := NewRegistry(cfg, nil, nil)
+
+	// Another process adds a project to the same config file.
+	other, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	if _, err := NewRegistry(other, nil, nil).Add("JobTracker", t.TempDir(), ""); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if _, ok := reg.Get("JobTracker"); ok {
+		t.Fatal("expected JobTracker to be unknown before Refresh")
+	}
+
+	if errs := reg.Refresh(); len(errs) != 0 {
+		t.Fatalf("Refresh: %v", errs)
+	}
+	before, ok := reg.Get("JobTracker")
+	if !ok {
+		t.Fatal("expected Refresh to load JobTracker")
+	}
+
+	// A second Refresh keeps the already-loaded project as is.
+	if errs := reg.Refresh(); len(errs) != 0 {
+		t.Fatalf("second Refresh: %v", errs)
+	}
+	if after, _ := reg.Get("JobTracker"); after != before {
+		t.Fatal("expected Refresh to keep the existing *Project")
+	}
+}
+
+func TestRefreshWithoutConfigIsNoop(t *testing.T) {
+	reg := NewRegistry(nil, nil, nil)
+	if errs := reg.Refresh(); len(errs) != 0 {
+		t.Fatalf("Refresh: %v", errs)
+	}
+	if len(reg.List()) != 0 {
+		t.Fatal("expected no projects")
+	}
+}

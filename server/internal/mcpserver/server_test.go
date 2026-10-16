@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"localtask/internal/project"
+	"localtask/internal/registry"
 	"localtask/internal/ticket"
 )
 
@@ -42,7 +43,7 @@ func newTestSession(t *testing.T) (*mcp.ClientSession, string) {
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
-	srv := New(map[string]*project.Project{"DanceNote": p})
+	srv := New(registry.NewRegistry(nil, map[string]*project.Project{"DanceNote": p}, nil))
 
 	clientTransport, serverTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()
