@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { ProjectListPage } from './pages/ProjectListPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { BoardPage } from './pages/BoardPage'
+import { GraphPage } from './pages/GraphPage'
 import { ListPage } from './pages/ListPage'
 import { TicketDetailPage } from './pages/TicketDetailPage'
 import { DocumentPage } from './pages/DocumentPage'
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/projects/:project" element={<Layout />}>
           <Route index element={<DashboardPage />} />
           <Route path="board" element={<BoardPage />} />
+          <Route path="graph" element={<GraphPage />} />
           <Route path="list" element={<ListPage />} />
           <Route path="activity" element={<ActivityPage />} />
           <Route path="tickets/:ticketId" element={<TicketDetailPage />} />

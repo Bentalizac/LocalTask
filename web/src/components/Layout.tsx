@@ -21,6 +21,7 @@ export function Layout() {
             Dashboard
           </NavLink>
           <NavLink to={`${base}/board`}>Board</NavLink>
+          <NavLink to={`${base}/graph`}>Graph</NavLink>
           <NavLink to={`${base}/list`}>List</NavLink>
           <NavLink to={`${base}/activity`}>Activity</NavLink>
         </nav>
