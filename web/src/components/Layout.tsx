@@ -22,6 +22,7 @@ export function Layout() {
           </NavLink>
           <NavLink to={`${base}/board`}>Board</NavLink>
           <NavLink to={`${base}/list`}>List</NavLink>
+          <NavLink to={`${base}/activity`}>Activity</NavLink>
         </nav>
         <button className="btn btn-primary btn-sm" onClick={() => setShowNew(true)}>
           + New ticket

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getTicket, listTickets, updateTicket } from '../api'
-import { PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
+import { AssigneeChip, PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
+import { usePolling } from '../hooks/usePolling'
+import { relativeTime } from '../time'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 import type { Ticket } from '../types'
 
@@ -13,6 +15,8 @@ export function TicketDetailPage() {
   const [draft, setDraft] = useState<{ title: string; description: string; tags: string; constraints: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [children, setChildren] = useState<Ticket[]>([])
+  const [note, setNote] = useState('')
+  const [addingNote, setAddingNote] = useState(false)
 
   function load() {
     setError(null)
@@ -26,6 +30,14 @@ export function TicketDetailPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, ticketId])
+
+  // Keep the page live while an agent works the ticket. Paused while
+  // editing so a refresh can't shift the form out from under the user.
+  usePolling(() => {
+    getTicket(project, ticketId)
+      .then(setTicket)
+      .catch(() => {})
+  }, !editing)
 
   useEffect(() => {
     setChildren([])
@@ -49,6 +61,20 @@ export function TicketDetailPage() {
       await patch({ acceptance_criteria: criteria })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update acceptance criteria')
+    }
+  }
+
+  async function addNote() {
+    const text = note.trim()
+    if (!text) return
+    setAddingNote(true)
+    try {
+      await patch({ note: text })
+      setNote('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add note')
+    } finally {
+      setAddingNote(false)
     }
   }
 
@@ -190,6 +216,39 @@ export function TicketDetailPage() {
           </div>
 
           <div className="detail-section">
+            <h2 className="section-title">Activity</h2>
+            <div className="note-form">
+              <textarea
+                className="description-input"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Leave a note for the agent working this ticket…"
+                rows={2}
+              />
+              <button className="btn btn-sm" onClick={addNote} disabled={addingNote || !note.trim()}>
+                {addingNote ? 'Adding…' : 'Add note'}
+              </button>
+            </div>
+            {(ticket.activity ?? []).length === 0 ? (
+              <div className="empty-note">No activity yet.</div>
+            ) : (
+              <ol className="activity-feed">
+                {[...(ticket.activity ?? [])].reverse().map((e, i) => (
+                  <li key={`${e.at}-${i}`} className={`activity-item kind-${e.kind}`}>
+                    <div className="activity-item-head">
+                      {e.author ? <AssigneeChip name={e.author} /> : <span className="empty-note">unknown</span>}
+                      <span className="activity-time" title={e.at}>
+                        {relativeTime(e.at)}
+                      </span>
+                    </div>
+                    <div className="activity-text">{e.text}</div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="detail-section">
             <h2 className="section-title">Constraints</h2>
             {editing ? (
               <textarea
@@ -243,6 +302,25 @@ export function TicketDetailPage() {
                 ))}
               </select>
             </div>
+            <div className="field-row">
+              <span className="field-label">Assignee</span>
+              {ticket.assignee ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AssigneeChip name={ticket.assignee} />
+                  <button className="btn btn-sm" onClick={() => patch({ assignee: '' })} title="Release this ticket">
+                    Unassign
+                  </button>
+                </span>
+              ) : (
+                <span className="empty-note">—</span>
+              )}
+            </div>
+            {ticket.updated_at && (
+              <div className="field-row">
+                <span className="field-label">Updated</span>
+                <span title={ticket.updated_at}>{relativeTime(ticket.updated_at)}</span>
+              </div>
+            )}
             {ticket.parent && (
               <div className="field-row">
                 <span className="field-label">Parent</span>

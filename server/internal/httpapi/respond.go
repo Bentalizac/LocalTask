@@ -29,14 +29,14 @@ func writeError(w http.ResponseWriter, status int, err error) {
 }
 
 // writeDomainError maps an error from the project package to the
-// appropriate HTTP status: not-found errors to 404, an external edit
-// conflict to 409, a failed validation to 422, and anything else
+// appropriate HTTP status: not-found errors to 404, a failed
+// precondition (e.g. a ticket claimed by another agent) to 409, a failed validation to 422, and anything else
 // (malformed input) to 400.
 func writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, project.ErrTicketNotFound):
 		writeError(w, http.StatusNotFound, err)
-	case errors.Is(err, project.ErrStaleTaskboard):
+	case errors.Is(err, project.ErrConflict):
 		writeError(w, http.StatusConflict, err)
 	default:
 		var verr *project.ValidationError

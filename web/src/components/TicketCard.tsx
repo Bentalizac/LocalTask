@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { PriorityBadge, TypeBadge } from './Badges'
 import type { Ticket, TicketStatus } from '../types'
 import { BOARD_COLUMNS } from '../types'
+import { AssigneeChip } from './Badges'
+import { isStale, relativeTime } from '../time'
 
 interface Props {
   project: string
@@ -14,6 +16,7 @@ export function TicketCard({ project, ticket, onStatusChange }: Props) {
   const [isDragging, setIsDragging] = useState(false)
   const criteria = ticket.acceptance_criteria ?? []
   const complete = criteria.filter((c) => c.complete).length
+  const stale = ticket.status === 'in_progress' && isStale(ticket.updated_at)
 
   return (
     <div
@@ -28,6 +31,14 @@ export function TicketCard({ project, ticket, onStatusChange }: Props) {
     >
       <div className="ticket-card-top">
         <span>{ticket.id}</span>
+        {ticket.updated_at && (
+          <span
+            className={`ticket-card-updated${stale ? ' stale' : ''}`}
+            title={stale ? 'In progress with no updates for 30+ minutes' : ticket.updated_at}
+          >
+            {relativeTime(ticket.updated_at)}
+          </span>
+        )}
       </div>
       <Link
         draggable={false}
@@ -45,13 +56,14 @@ export function TicketCard({ project, ticket, onStatusChange }: Props) {
         ))}
       </div>
       <div className="ticket-card-footer">
-        {criteria.length > 0 ? (
-          <span className="ac-progress">
-            AC: {complete}/{criteria.length}
-          </span>
-        ) : (
-          <span />
-        )}
+        <span className="ticket-card-meta">
+          {ticket.assignee && <AssigneeChip name={ticket.assignee} />}
+          {criteria.length > 0 && (
+            <span className="ac-progress">
+              AC: {complete}/{criteria.length}
+            </span>
+          )}
+        </span>
         <select
           className="status-select"
           value={ticket.status}

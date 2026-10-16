@@ -54,6 +54,18 @@ export interface Ticket {
   tags?: string[]
   related_docs?: string[]
   related_code?: string[]
+  assignee?: string
+  updated_at?: string
+  activity?: ActivityEntry[]
+}
+
+export type ActivityKind = 'created' | 'status' | 'assignee' | 'note'
+
+export interface ActivityEntry {
+  at: string
+  author?: string
+  kind: ActivityKind
+  text: string
 }
 
 export interface ProjectMetrics {

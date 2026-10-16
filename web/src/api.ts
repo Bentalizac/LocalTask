@@ -64,7 +64,10 @@ export function createTicket(project: string, input: CreateTicketInput): Promise
   })
 }
 
-export type TicketPatch = Partial<Omit<Ticket, 'id'>>
+export type TicketPatch = Partial<Omit<Ticket, 'id' | 'activity' | 'updated_at'>> & {
+  // Appended to the ticket's activity log rather than stored as a field.
+  note?: string
+}
 
 export function updateTicket(
   project: string,

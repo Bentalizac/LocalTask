@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createTicket, listTickets, updateTicket, type CreateTicketInput } from '../api'
 import type { Ticket, TicketStatus } from '../types'
+import { usePolling } from './usePolling'
 
 export function useTickets(project: string) {
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
@@ -18,6 +19,28 @@ export function useTickets(project: string) {
     reload()
   }, [reload])
 
+  // Live refresh so agents' changes show up without a reload. Skipped while
+  // a local write is in flight, so a poll that raced it can't briefly undo
+  // an optimistic update; identical results are dropped to avoid re-renders.
+  const pendingWrites = useRef(0)
+  const lastJSON = useRef('')
+  usePolling(() => {
+    if (pendingWrites.current > 0) return
+    listTickets(project)
+      .then((next) => {
+        if (pendingWrites.current > 0) return
+        const json = JSON.stringify(next)
+        if (json === lastJSON.current) return
+        lastJSON.current = json
+        setTickets(next)
+        setError(null)
+      })
+      .catch(() => {
+        // Transient (e.g. the server restarting during a rebuild); the next
+        // tick retries, and the initial load already surfaces hard errors.
+      })
+  })
+
   async function setStatus(id: string, status: TicketStatus) {
     const current = tickets?.find((t) => t.id === id)
     if (!current || current.status === status) return
@@ -32,11 +55,14 @@ export function useTickets(project: string) {
       const rest = cur.filter((t) => t.id !== id)
       return [...rest, { ...current, status }]
     })
+    pendingWrites.current++
     try {
       await updateTicket(project, id, { status })
     } catch (err) {
       setTickets(prev)
       setError(err instanceof Error ? err.message : 'Failed to update ticket')
+    } finally {
+      pendingWrites.current--
     }
   }
 

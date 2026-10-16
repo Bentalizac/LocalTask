@@ -6,6 +6,7 @@ import { BoardPage } from './pages/BoardPage'
 import { ListPage } from './pages/ListPage'
 import { TicketDetailPage } from './pages/TicketDetailPage'
 import { DocumentPage } from './pages/DocumentPage'
+import { ActivityPage } from './pages/ActivityPage'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="board" element={<BoardPage />} />
           <Route path="list" element={<ListPage />} />
+          <Route path="activity" element={<ActivityPage />} />
           <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
           <Route path="docs/*" element={<DocumentPage />} />
         </Route>

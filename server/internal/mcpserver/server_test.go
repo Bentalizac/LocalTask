@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -297,5 +298,45 @@ func TestReadResourceUnknownProject(t *testing.T) {
 	_, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "project://Nope"})
 	if err == nil {
 		t.Fatal("expected error for unknown project")
+	}
+}
+
+func TestClaimAndNoteWorkflow(t *testing.T) {
+	session, _ := newTestSession(t)
+	created, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
+		"project": "DanceNote", "title": "agent work", "status": "ready", "agent": "planner",
+	})
+	if res.IsError {
+		t.Fatalf("create_ticket: %s", errorText(res))
+	}
+
+	ready, res := callTool[listTicketsResult](t, session, "next_ready_tickets", map[string]any{"project": "DanceNote"})
+	if res.IsError || len(ready.Tickets) == 0 || ready.Tickets[0].ID != created.ID {
+		t.Fatalf("next_ready_tickets: %+v %s", ready, errorText(res))
+	}
+
+	claimed, res := callTool[ticket.Ticket](t, session, "claim_ticket", map[string]any{
+		"project": "DanceNote", "ticket_id": created.ID, "agent": "worker-1",
+	})
+	if res.IsError || claimed.Assignee != "worker-1" || claimed.Status != ticket.StatusInProgress {
+		t.Fatalf("claim_ticket: %+v %s", claimed, errorText(res))
+	}
+
+	_, res = callTool[ticket.Ticket](t, session, "claim_ticket", map[string]any{
+		"project": "DanceNote", "ticket_id": created.ID, "agent": "worker-2",
+	})
+	if !res.IsError || !strings.Contains(errorText(res), "worker-1") {
+		t.Fatalf("second claim should fail naming the holder, got %q", errorText(res))
+	}
+
+	noted, res := callTool[ticket.Ticket](t, session, "update_ticket", map[string]any{
+		"project": "DanceNote", "ticket_id": created.ID, "agent": "worker-1", "note": "halfway there",
+	})
+	if res.IsError {
+		t.Fatalf("update_ticket: %s", errorText(res))
+	}
+	last := noted.Activity[len(noted.Activity)-1]
+	if last.Kind != ticket.ActivityNote || last.Author != "worker-1" || last.Text != "halfway there" {
+		t.Fatalf("unexpected last activity: %+v", last)
 	}
 }

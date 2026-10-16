@@ -9,6 +9,10 @@ import (
 	"localtask/internal/ticket"
 )
 
+// webAuthor is recorded on activity entries for changes made through the
+// web UI, so the activity log distinguishes a human's edits from agents'.
+const webAuthor = "web"
+
 func (s *Server) handleListTickets(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.project(w, r)
 	if !ok {
@@ -49,12 +53,8 @@ func (s *Server) handleCreateTicket(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
-	created, err := p.CreateTicket(req.toTicket())
+	created, err := p.CreateTicket(req.toTicket(), webAuthor)
 	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	if err := p.Save(); err != nil {
 		writeDomainError(w, err)
 		return
 	}
@@ -73,10 +73,6 @@ func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := p.UpdateTicket(r.PathValue("ticket"), req.toPatch())
 	if err != nil {
-		writeDomainError(w, err)
-		return
-	}
-	if err := p.Save(); err != nil {
 		writeDomainError(w, err)
 		return
 	}

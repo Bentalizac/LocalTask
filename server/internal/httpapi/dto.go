@@ -21,6 +21,7 @@ type createTicketRequest struct {
 	Tags               []string                     `json:"tags,omitempty"`
 	RelatedDocs        []string                     `json:"related_docs,omitempty"`
 	RelatedCode        []string                     `json:"related_code,omitempty"`
+	Assignee           string                       `json:"assignee,omitempty"`
 }
 
 func (r createTicketRequest) toTicket() ticket.Ticket {
@@ -38,6 +39,7 @@ func (r createTicketRequest) toTicket() ticket.Ticket {
 		Tags:               r.Tags,
 		RelatedDocs:        r.RelatedDocs,
 		RelatedCode:        r.RelatedCode,
+		Assignee:           r.Assignee,
 	}
 }
 
@@ -57,6 +59,8 @@ type updateTicketRequest struct {
 	Tags               *[]string                     `json:"tags"`
 	RelatedDocs        *[]string                     `json:"related_docs"`
 	RelatedCode        *[]string                     `json:"related_code"`
+	Assignee           *string                       `json:"assignee"`
+	Note               *string                       `json:"note"`
 }
 
 func (r updateTicketRequest) toPatch() project.TicketPatch {
@@ -70,6 +74,9 @@ func (r updateTicketRequest) toPatch() project.TicketPatch {
 		Tags:               r.Tags,
 		RelatedDocs:        r.RelatedDocs,
 		RelatedCode:        r.RelatedCode,
+		Assignee:           r.Assignee,
+		Note:               r.Note,
+		Author:             webAuthor,
 	}
 	if r.Type != nil {
 		t := ticket.Type(*r.Type)

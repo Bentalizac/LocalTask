@@ -2,7 +2,10 @@
 // project/taskboard service, the HTTP API, and the MCP server.
 package ticket
 
-import "slices"
+import (
+	"slices"
+	"time"
+)
 
 // Type is the kind of work a ticket represents.
 type Type string
@@ -90,6 +93,46 @@ type Ticket struct {
 	Tags               []string              `json:"tags,omitempty"`
 	RelatedDocs        []string              `json:"related_docs,omitempty"`
 	RelatedCode        []string              `json:"related_code,omitempty"`
+
+	// Assignee names the agent (or person) currently working the ticket.
+	// Agents self-report a name; see the MCP server's claim_ticket tool.
+	Assignee  string    `json:"assignee,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitzero"`
+
+	// Activity is a capped, newest-last log of what happened to the ticket:
+	// status/assignee changes recorded automatically, plus free-text notes
+	// agents leave for whoever picks the work up next.
+	Activity []ActivityEntry `json:"activity,omitempty"`
+}
+
+// ActivityKind classifies an ActivityEntry.
+type ActivityKind string
+
+const (
+	ActivityCreated  ActivityKind = "created"
+	ActivityStatus   ActivityKind = "status"
+	ActivityAssignee ActivityKind = "assignee"
+	ActivityNote     ActivityKind = "note"
+)
+
+// ActivityEntry is one line in a ticket's activity log.
+type ActivityEntry struct {
+	At     time.Time    `json:"at"`
+	Author string       `json:"author,omitempty"`
+	Kind   ActivityKind `json:"kind"`
+	Text   string       `json:"text"`
+}
+
+// MaxActivity caps a ticket's activity log so taskboard.json (which lives
+// in git) doesn't grow without bound; the oldest entries are dropped.
+const MaxActivity = 50
+
+// AddActivity appends an entry, dropping the oldest beyond MaxActivity.
+func (t *Ticket) AddActivity(e ActivityEntry) {
+	t.Activity = append(t.Activity, e)
+	if over := len(t.Activity) - MaxActivity; over > 0 {
+		t.Activity = append([]ActivityEntry(nil), t.Activity[over:]...)
+	}
 }
 
 // AcceptanceCriteriaProgress returns the number of complete acceptance

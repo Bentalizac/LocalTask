@@ -51,8 +51,18 @@ func (s *server) registerTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_ticket",
-		Description: "Update fields on an existing ticket. Only fields explicitly provided are changed. Use this to change status, update acceptance criteria, or add tags/related docs/related code as work progresses.",
+		Description: "Update fields on an existing ticket. Only fields explicitly provided are changed. Use this to change status, leave a progress note, update acceptance criteria, release a ticket (assignee: \"\"), or add tags/related docs/related code as work progresses. Always pass your agent name.",
 	}, s.updateTicket)
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "claim_ticket",
+		Description: "Atomically claim a ticket: assign it to you and move it to in_progress. Fails if another agent already holds it or it is done/cancelled — pick a different ticket rather than retrying. Re-claiming a ticket you already hold succeeds.",
+	}, s.claimTicket)
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "next_ready_tickets",
+		Description: "List tickets that can be picked up right now: status ready, unassigned, and all dependencies done or cancelled. Ordered by priority, highest first.",
+	}, s.nextReadyTickets)
 }
 
 // --- list_projects ---
@@ -284,6 +294,8 @@ type createTicketArgs struct {
 	Tags               []string                     `json:"tags,omitempty"`
 	RelatedDocs        []string                     `json:"related_docs,omitempty"`
 	RelatedCode        []string                     `json:"related_code,omitempty"`
+	Assignee           string                       `json:"assignee,omitempty" jsonschema:"agent to assign the ticket to"`
+	Agent              string                       `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
 }
 
 func (s *server) createTicket(_ context.Context, _ *mcp.CallToolRequest, args createTicketArgs) (*mcp.CallToolResult, ticket.Ticket, error) {
@@ -306,11 +318,9 @@ func (s *server) createTicket(_ context.Context, _ *mcp.CallToolRequest, args cr
 		Tags:               args.Tags,
 		RelatedDocs:        args.RelatedDocs,
 		RelatedCode:        args.RelatedCode,
-	})
+		Assignee:           args.Assignee,
+	}, args.Agent)
 	if err != nil {
-		return nil, ticket.Ticket{}, err
-	}
-	if err := p.Save(); err != nil {
 		return nil, ticket.Ticket{}, err
 	}
 	return nil, *created, nil
@@ -336,6 +346,11 @@ type updateTicketArgs struct {
 	Tags               *[]string                     `json:"tags,omitempty"`
 	RelatedDocs        *[]string                     `json:"related_docs,omitempty"`
 	RelatedCode        *[]string                     `json:"related_code,omitempty"`
+	Assignee           *string                       `json:"assignee,omitempty" jsonschema:"set the assignee; empty string releases the ticket"`
+	Note               *string                       `json:"note,omitempty" jsonschema:"a progress or handoff note to append to the ticket's activity log"`
+	Agent              string                        `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
+	ExpectedStatus     *string                       `json:"expected_status,omitempty" jsonschema:"only apply the update if the ticket currently has this status"`
+	ExpectedAssignee   *string                       `json:"expected_assignee,omitempty" jsonschema:"only apply the update if the ticket is currently assigned to this agent (empty string: unassigned)"`
 }
 
 func (a updateTicketArgs) toPatch() project.TicketPatch {
@@ -349,6 +364,14 @@ func (a updateTicketArgs) toPatch() project.TicketPatch {
 		Tags:               a.Tags,
 		RelatedDocs:        a.RelatedDocs,
 		RelatedCode:        a.RelatedCode,
+		Assignee:           a.Assignee,
+		Note:               a.Note,
+		Author:             a.Agent,
+		ExpectAssignee:     a.ExpectedAssignee,
+	}
+	if a.ExpectedStatus != nil {
+		v := ticket.Status(*a.ExpectedStatus)
+		patch.ExpectStatus = &v
 	}
 	if a.Type != nil {
 		v := ticket.Type(*a.Type)
@@ -374,8 +397,39 @@ func (s *server) updateTicket(_ context.Context, _ *mcp.CallToolRequest, args up
 	if err != nil {
 		return nil, ticket.Ticket{}, err
 	}
-	if err := p.Save(); err != nil {
+	return nil, *updated, nil
+}
+
+// --- claim_ticket ---
+
+type claimTicketArgs struct {
+	Project  string `json:"project" jsonschema:"the configured project name"`
+	TicketID string `json:"ticket_id" jsonschema:"the ticket id, e.g. DN-42"`
+	Agent    string `json:"agent" jsonschema:"your agent name; becomes the ticket's assignee"`
+}
+
+func (s *server) claimTicket(_ context.Context, _ *mcp.CallToolRequest, args claimTicketArgs) (*mcp.CallToolResult, ticket.Ticket, error) {
+	p, err := s.project(args.Project)
+	if err != nil {
 		return nil, ticket.Ticket{}, err
 	}
-	return nil, *updated, nil
+	claimed, err := p.ClaimTicket(args.TicketID, args.Agent)
+	if err != nil {
+		return nil, ticket.Ticket{}, err
+	}
+	return nil, *claimed, nil
+}
+
+// --- next_ready_tickets ---
+
+func (s *server) nextReadyTickets(_ context.Context, _ *mcp.CallToolRequest, args projectArgs) (*mcp.CallToolResult, listTicketsResult, error) {
+	p, err := s.project(args.Project)
+	if err != nil {
+		return nil, listTicketsResult{}, err
+	}
+	tickets := p.ReadyTickets()
+	if tickets == nil {
+		tickets = []ticket.Ticket{}
+	}
+	return nil, listTicketsResult{Tickets: tickets}, nil
 }
