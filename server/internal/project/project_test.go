@@ -378,3 +378,38 @@ func TestValidateRejectsDuplicateIDs(t *testing.T) {
 		t.Fatal("expected validation error for duplicate ids")
 	}
 }
+
+func TestReleaseTicket(t *testing.T) {
+	root := copyTestProject(t)
+	p, err := LoadProject("DanceNote", root, root)
+	if err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	created, err := p.CreateTicket(ticket.Ticket{Title: "release me", Status: ticket.StatusReady}, "")
+	if err != nil {
+		t.Fatalf("CreateTicket: %v", err)
+	}
+	if _, err := p.ClaimTicket(created.ID, "agent-a"); err != nil {
+		t.Fatalf("ClaimTicket: %v", err)
+	}
+
+	if _, err := p.ReleaseTicket(created.ID, "agent-b", ""); !errors.Is(err, ErrConflict) {
+		t.Fatalf("expected ErrConflict when a non-holder releases, got %v", err)
+	}
+
+	released, err := p.ReleaseTicket(created.ID, "agent-a", "halfway done")
+	if err != nil {
+		t.Fatalf("ReleaseTicket: %v", err)
+	}
+	if released.Assignee != "" || released.Status != ticket.StatusReady {
+		t.Fatalf("expected unassigned/ready, got %q/%s", released.Assignee, released.Status)
+	}
+	last := released.Activity[len(released.Activity)-1]
+	if last.Kind != ticket.ActivityNote || last.Text != "halfway done" || last.Author != "agent-a" {
+		t.Fatalf("expected agent-a's note last in activity, got %+v", last)
+	}
+
+	if _, err := p.ClaimTicket(created.ID, "agent-b"); err != nil {
+		t.Fatalf("another agent should be able to claim after release: %v", err)
+	}
+}

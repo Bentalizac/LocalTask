@@ -374,3 +374,34 @@ func TestJiraKeysCreateSearchAndValidate(t *testing.T) {
 		t.Fatal("expected an invalid jira key to be rejected")
 	}
 }
+
+// TestReleaseTicketTool covers LT-12: an agent must be able to release a
+// ticket without sending an empty assignee string, which some MCP clients
+// can't do.
+func TestReleaseTicketTool(t *testing.T) {
+	session, _ := newTestSession(t)
+
+	created, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
+		"project": "DanceNote",
+		"title":   "Release me",
+		"status":  "ready",
+	})
+	if res.IsError {
+		t.Fatalf("create_ticket: %s", errorText(res))
+	}
+	if _, res := callTool[ticket.Ticket](t, session, "claim_ticket", map[string]any{
+		"project": "DanceNote", "ticket_id": created.ID, "agent": "agent-a",
+	}); res.IsError {
+		t.Fatalf("claim_ticket: %s", errorText(res))
+	}
+
+	released, res := callTool[ticket.Ticket](t, session, "release_ticket", map[string]any{
+		"project": "DanceNote", "ticket_id": created.ID, "agent": "agent-a", "note": "left off at tests",
+	})
+	if res.IsError {
+		t.Fatalf("release_ticket: %s", errorText(res))
+	}
+	if released.Assignee != "" || released.Status != ticket.StatusReady {
+		t.Fatalf("expected unassigned/ready, got %q/%s", released.Assignee, released.Status)
+	}
+}

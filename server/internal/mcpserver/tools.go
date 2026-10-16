@@ -51,13 +51,18 @@ func (s *server) registerTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_ticket",
-		Description: "Update fields on an existing ticket. Only fields explicitly provided are changed. Use this to change status, leave a progress note, update acceptance criteria, release a ticket (assignee: \"\"), or add tags/related docs/related code as work progresses. Always pass your agent name.",
+		Description: "Update fields on an existing ticket. Only fields explicitly provided are changed. Use this to change status, leave a progress note, update acceptance criteria, or add tags/related docs/related code as work progresses. Always pass your agent name.",
 	}, s.updateTicket)
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "claim_ticket",
 		Description: "Atomically claim a ticket: assign it to you and move it to in_progress. Fails if another agent already holds it or it is done/cancelled — pick a different ticket rather than retrying. Re-claiming a ticket you already hold succeeds.",
 	}, s.claimTicket)
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "release_ticket",
+		Description: "Release a ticket you hold without finishing it: unassign it and append your note (say where you left off). An in_progress ticket goes back to ready. Fails if another agent holds it.",
+	}, s.releaseTicket)
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "next_ready_tickets",
@@ -355,7 +360,7 @@ type updateTicketArgs struct {
 	RelatedDocs        *[]string                     `json:"related_docs,omitempty"`
 	RelatedCode        *[]string                     `json:"related_code,omitempty"`
 	Jira               *[]string                     `json:"jira,omitempty" jsonschema:"the full replacement list of Jira issue keys this ticket is part of, e.g. RT-1234"`
-	Assignee           *string                       `json:"assignee,omitempty" jsonschema:"set the assignee; empty string releases the ticket"`
+	Assignee           *string                       `json:"assignee,omitempty" jsonschema:"set the assignee; to release a ticket, call release_ticket"`
 	Note               *string                       `json:"note,omitempty" jsonschema:"a progress or handoff note to append to the ticket's activity log"`
 	Agent              string                        `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
 	ExpectedStatus     *string                       `json:"expected_status,omitempty" jsonschema:"only apply the update if the ticket currently has this status"`
@@ -428,6 +433,27 @@ func (s *server) claimTicket(_ context.Context, _ *mcp.CallToolRequest, args cla
 		return nil, ticket.Ticket{}, err
 	}
 	return nil, *claimed, nil
+}
+
+// --- release_ticket ---
+
+type releaseTicketArgs struct {
+	Project  string `json:"project" jsonschema:"the configured project name"`
+	TicketID string `json:"ticket_id" jsonschema:"the ticket id, e.g. DN-42"`
+	Agent    string `json:"agent" jsonschema:"your agent name; must be the ticket's current assignee"`
+	Note     string `json:"note,omitempty" jsonschema:"a handoff note for the next agent: what's done and what's left"`
+}
+
+func (s *server) releaseTicket(_ context.Context, _ *mcp.CallToolRequest, args releaseTicketArgs) (*mcp.CallToolResult, ticket.Ticket, error) {
+	p, err := s.project(args.Project)
+	if err != nil {
+		return nil, ticket.Ticket{}, err
+	}
+	released, err := p.ReleaseTicket(args.TicketID, args.Agent, args.Note)
+	if err != nil {
+		return nil, ticket.Ticket{}, err
+	}
+	return nil, *released, nil
 }
 
 // --- next_ready_tickets ---

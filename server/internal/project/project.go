@@ -389,6 +389,43 @@ func (p *Project) ClaimTicket(id, agent string) (*ticket.Ticket, error) {
 	return &updated, nil
 }
 
+// ReleaseTicket unassigns a ticket agent holds, appending note (if any) to
+// its activity log. An in_progress ticket goes back to ready so another
+// agent can pick it up. It fails with ErrConflict if someone else holds the
+// ticket. Releasing an unassigned ticket only appends the note.
+func (p *Project) ReleaseTicket(id, agent, note string) (*ticket.Ticket, error) {
+	if agent == "" {
+		return nil, errors.New("agent name is required to release a ticket")
+	}
+	var updated ticket.Ticket
+	err := p.mutate(func(tb *Taskboard) error {
+		idx := indexOf(tb.Tickets, id)
+		if idx == -1 {
+			return ErrTicketNotFound
+		}
+		cur := tb.Tickets[idx]
+		if cur.Assignee != "" && cur.Assignee != agent {
+			return fmt.Errorf("%w: %s is claimed by %q, not %q", ErrConflict, id, cur.Assignee, agent)
+		}
+		unassigned := ""
+		patch := TicketPatch{Assignee: &unassigned, Author: agent}
+		if note != "" {
+			patch.Note = &note
+		}
+		if cur.Status == ticket.StatusInProgress {
+			s := ticket.StatusReady
+			patch.Status = &s
+		}
+		updated = applyPatch(cur, patch)
+		tb.Tickets[idx] = updated
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
 // ReadyTickets returns tickets an agent could pick up right now: status
 // ready, unassigned, and every dependency done or cancelled. Ordered by
 // priority (critical first), then board order.
