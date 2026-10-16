@@ -36,7 +36,7 @@ func newTestServer(t *testing.T) (*Server, string) {
 		t.Fatalf("writing doc: %v", err)
 	}
 
-	p, err := project.LoadProject("DanceNote", root)
+	p, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestCreateTicketPersists(t *testing.T) {
 		t.Fatalf("expected generated id DN-43, got %s", created.ID)
 	}
 
-	reloaded, err := project.LoadProject("DanceNote", root)
+	reloaded, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestUpdateTicketPersists(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body)
 	}
 
-	reloaded, err := project.LoadProject("DanceNote", root)
+	reloaded, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}

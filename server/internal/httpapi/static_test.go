@@ -16,7 +16,7 @@ func newTestServerWithStatic(t *testing.T) *Server {
 	if err := os.WriteFile(filepath.Join(root, "taskboard.json"), []byte(`{"version":1,"project":"DanceNote","tickets":[]}`), 0o644); err != nil {
 		t.Fatalf("writing taskboard: %v", err)
 	}
-	p, err := project.LoadProject("DanceNote", root)
+	p, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}

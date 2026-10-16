@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -12,10 +13,37 @@ import (
 	"localtask/internal/storage"
 )
 
+// Storage says where a project's taskboard.json lives.
+type Storage string
+
+const (
+	// StorageExternal keeps taskboard.json outside the project directory,
+	// under BoardsDirName next to the config file. LocalTask then writes
+	// nothing into the project's repo. This is the default.
+	StorageExternal Storage = "external"
+	// StorageRepo keeps taskboard.json at the project's root, so it can be
+	// committed alongside the code.
+	StorageRepo Storage = "repo"
+)
+
+// BoardsDirName is the directory, next to the config file, that holds one
+// subdirectory per externally stored project board.
+const BoardsDirName = "boards"
+
 // ProjectConfig points the application at one local project directory.
 type ProjectConfig struct {
-	Name string `yaml:"name"`
-	Path string `yaml:"path"`
+	Name    string  `yaml:"name"`
+	Path    string  `yaml:"path"`
+	Storage Storage `yaml:"storage,omitempty"`
+}
+
+// EffectiveStorage returns the project's storage mode, applying the
+// external default when none is set.
+func (pc ProjectConfig) EffectiveStorage() Storage {
+	if pc.Storage == "" {
+		return StorageExternal
+	}
+	return pc.Storage
 }
 
 // Config is the top-level shape of the taskboard config file.
@@ -68,6 +96,9 @@ func (c *Config) AddProject(pc ProjectConfig) error {
 	if pc.Name == "" || pc.Path == "" {
 		return fmt.Errorf("project name and path are required")
 	}
+	if err := pc.Validate(); err != nil {
+		return err
+	}
 	for _, existing := range c.Projects {
 		if existing.Name == pc.Name {
 			return fmt.Errorf("project %q already configured", pc.Name)
@@ -93,6 +124,9 @@ func (c *Config) Validate() error {
 		if p.Path == "" {
 			issues = append(issues, fmt.Sprintf("projects[%d]: missing path", i))
 		}
+		if err := p.Validate(); err != nil {
+			issues = append(issues, fmt.Sprintf("projects[%d]: %v", i, err))
+		}
 		if p.Name != "" && seen[p.Name] {
 			issues = append(issues, fmt.Sprintf("duplicate project name %q", p.Name))
 		}
@@ -102,6 +136,33 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("config validation failed:\n- %s", strings.Join(issues, "\n- "))
 	}
 	return nil
+}
+
+// Validate checks pc's fields beyond presence: the storage mode, and that
+// the name is usable as a directory name for an external board.
+func (pc ProjectConfig) Validate() error {
+	switch pc.Storage {
+	case "", StorageExternal, StorageRepo:
+	default:
+		return fmt.Errorf("invalid storage %q (want %q or %q)", pc.Storage, StorageExternal, StorageRepo)
+	}
+	if pc.Name == "." || pc.Name == ".." || strings.ContainsAny(pc.Name, `/\`) {
+		return fmt.Errorf("invalid project name %q: must not be \".\", \"..\", or contain a path separator", pc.Name)
+	}
+	return nil
+}
+
+// BoardDir returns the directory holding pc's taskboard.json: the project
+// root for StorageRepo, or a per-project directory under BoardsDirName next
+// to the config file for StorageExternal.
+func (c *Config) BoardDir(pc ProjectConfig) (string, error) {
+	if pc.EffectiveStorage() == StorageRepo {
+		return pc.Path, nil
+	}
+	if c.path == "" {
+		return "", fmt.Errorf("project %q: external storage needs a config file location to store boards next to", pc.Name)
+	}
+	return filepath.Join(filepath.Dir(c.path), BoardsDirName, pc.Name), nil
 }
 
 // FindProject returns the configured project with the given name.

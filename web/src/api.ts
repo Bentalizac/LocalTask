@@ -1,4 +1,4 @@
-import type { ApiErrorBody, BrowseListing, Doc, GitInfo, ProjectSummary, Ticket } from './types'
+import type { ApiErrorBody, BrowseListing, Doc, GitInfo, ProjectStorage, ProjectSummary, Ticket } from './types'
 
 export class ApiError extends Error {
   status: number
@@ -33,10 +33,10 @@ export function browseDirectory(path?: string): Promise<BrowseListing> {
   return request(`/api/browse${qs}`)
 }
 
-export function addProject(name: string, path: string): Promise<ProjectSummary> {
+export function addProject(name: string, path: string, storage: ProjectStorage): Promise<ProjectSummary> {
   return request('/api/projects', {
     method: 'POST',
-    body: JSON.stringify({ name, path }),
+    body: JSON.stringify({ name, path, storage }),
   })
 }
 

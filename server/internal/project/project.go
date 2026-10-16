@@ -19,30 +19,38 @@ import (
 var ErrTicketNotFound = errors.New("ticket not found")
 
 // Project is a loaded, in-memory view of a single project's taskboard,
-// backed by taskboard.json at Root. It is safe for concurrent use — the
+// backed by taskboard.json in BoardDir. It is safe for concurrent use — the
 // HTTP API and MCP server are expected to share one Project per project.
 type Project struct {
 	Name string
+	// Root is the project's own directory: docs, git info, and related
+	// paths resolve against it. LocalTask only reads from it, unless
+	// BoardDir is the same directory.
 	Root string
+	// BoardDir holds taskboard.json. It equals Root for a board committed
+	// with the project, or is a directory outside the project otherwise
+	// (see config.Storage).
+	BoardDir string
 
 	mu        sync.RWMutex
 	taskboard Taskboard
 }
 
-// LoadProject reads and validates taskboard.json from root.
-func LoadProject(name, root string) (*Project, error) {
-	tb, err := readTaskboardFile(root)
+// LoadProject reads taskboard.json from boardDir and validates it against
+// the project at root.
+func LoadProject(name, root, boardDir string) (*Project, error) {
+	tb, err := readTaskboardFile(boardDir)
 	if err != nil {
 		return nil, err
 	}
 	if err := validateTaskboard(&tb, root); err != nil {
 		return nil, err
 	}
-	return &Project{Name: name, Root: root, taskboard: tb}, nil
+	return &Project{Name: name, Root: root, BoardDir: boardDir, taskboard: tb}, nil
 }
 
-func readTaskboardFile(root string) (Taskboard, error) {
-	data, err := os.ReadFile(filepath.Join(root, TaskboardFileName))
+func readTaskboardFile(boardDir string) (Taskboard, error) {
+	data, err := os.ReadFile(filepath.Join(boardDir, TaskboardFileName))
 	if err != nil {
 		return Taskboard{}, fmt.Errorf("reading taskboard file: %w", err)
 	}
@@ -57,7 +65,7 @@ func readTaskboardFile(root string) (Taskboard, error) {
 // changes that were never saved. Returns an error (leaving the in-memory
 // state untouched) if the file is missing, unparseable, or now invalid.
 func (p *Project) Reload() error {
-	tb, err := readTaskboardFile(p.Root)
+	tb, err := readTaskboardFile(p.BoardDir)
 	if err != nil {
 		return err
 	}
@@ -71,7 +79,7 @@ func (p *Project) Reload() error {
 }
 
 // mutate applies fn to the freshest on-disk taskboard and persists the
-// result, all under a cross-process lock on the project directory. Every
+// result, all under a cross-process lock on the board's directory. Every
 // write goes through here, so concurrent writers — the HTTP server and any
 // number of MCP server processes, one per agent session — serialize
 // instead of overwriting each other: each one re-reads whatever the last
@@ -82,13 +90,13 @@ func (p *Project) mutate(fn func(tb *Taskboard) error) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	unlock, err := storage.LockDir(p.Root)
+	unlock, err := storage.LockDir(p.BoardDir)
 	if err != nil {
 		return fmt.Errorf("locking project: %w", err)
 	}
 	defer unlock()
 
-	tb, err := readTaskboardFile(p.Root)
+	tb, err := readTaskboardFile(p.BoardDir)
 	if err != nil {
 		return err
 	}
@@ -103,7 +111,7 @@ func (p *Project) mutate(fn func(tb *Taskboard) error) error {
 	if err != nil {
 		return err
 	}
-	if err := storage.WriteFileAtomic(filepath.Join(p.Root, TaskboardFileName), data, 0o644); err != nil {
+	if err := storage.WriteFileAtomic(filepath.Join(p.BoardDir, TaskboardFileName), data, 0o644); err != nil {
 		return err
 	}
 	p.taskboard = tb

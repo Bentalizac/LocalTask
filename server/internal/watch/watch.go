@@ -25,7 +25,7 @@ type Watcher struct {
 	logger       *log.Logger
 }
 
-// Start watches every project's root directory (not recursively — only
+// Start watches every project's board directory (not recursively — only
 // taskboard.json itself is cached in memory and needs invalidation;
 // Markdown docs are always read live from disk) and reloads a project
 // whenever its taskboard.json is written or replaced. It runs until Close
@@ -56,7 +56,7 @@ func Start(projects map[string]*project.Project, logger *log.Logger) (*Watcher, 
 	return w, nil
 }
 
-// Add starts watching an additional project's root directory. Safe to call
+// Add starts watching an additional project's board directory. Safe to call
 // while the watcher is already running.
 func (w *Watcher) Add(p *project.Project) error {
 	w.mu.Lock()
@@ -67,7 +67,7 @@ func (w *Watcher) Add(p *project.Project) error {
 // addLocked adds p to dirToProject and registers the fsnotify watch.
 // Callers must hold w.mu.
 func (w *Watcher) addLocked(p *project.Project) error {
-	dir := filepath.Clean(p.Root)
+	dir := filepath.Clean(p.BoardDir)
 	if err := w.fsw.Add(dir); err != nil {
 		return fmt.Errorf("watching %s: %w", dir, err)
 	}

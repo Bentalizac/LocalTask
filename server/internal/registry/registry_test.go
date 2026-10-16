@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"localtask/internal/config"
+	"localtask/internal/ticket"
 )
 
 func writeConfig(t *testing.T, contents string) string {
@@ -27,7 +28,7 @@ func TestAddCreatesTaskboardWhenMissing(t *testing.T) {
 	reg := NewRegistry(cfg, nil, nil)
 
 	projectDir := t.TempDir()
-	p, err := reg.Add("JobTracker", projectDir)
+	p, err := reg.Add("JobTracker", projectDir, config.StorageRepo)
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestAddUsesExistingTaskboard(t *testing.T) {
 		t.Fatalf("writing taskboard: %v", err)
 	}
 
-	p, err := reg.Add("DanceNote", projectDir)
+	p, err := reg.Add("DanceNote", projectDir, config.StorageRepo)
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
@@ -79,7 +80,7 @@ func TestAddPersistsToConfig(t *testing.T) {
 	reg := NewRegistry(cfg, nil, nil)
 
 	projectDir := t.TempDir()
-	if _, err := reg.Add("JobTracker", projectDir); err != nil {
+	if _, err := reg.Add("JobTracker", projectDir, ""); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
 
@@ -105,10 +106,10 @@ func TestAddRejectsDuplicateName(t *testing.T) {
 	reg := NewRegistry(cfg, nil, nil)
 
 	dirA, dirB := t.TempDir(), t.TempDir()
-	if _, err := reg.Add("DanceNote", dirA); err != nil {
+	if _, err := reg.Add("DanceNote", dirA, ""); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	if _, err := reg.Add("DanceNote", dirB); err == nil {
+	if _, err := reg.Add("DanceNote", dirB, ""); err == nil {
 		t.Fatal("expected error for duplicate project name")
 	}
 }
@@ -121,7 +122,7 @@ func TestAddRejectsRelativePath(t *testing.T) {
 	}
 	reg := NewRegistry(cfg, nil, nil)
 
-	if _, err := reg.Add("X", "relative/path"); err == nil {
+	if _, err := reg.Add("X", "relative/path", ""); err == nil {
 		t.Fatal("expected error for relative path")
 	}
 }
@@ -134,7 +135,72 @@ func TestAddRejectsNonexistentPath(t *testing.T) {
 	}
 	reg := NewRegistry(cfg, nil, nil)
 
-	if _, err := reg.Add("X", filepath.Join(t.TempDir(), "nope")); err == nil {
+	if _, err := reg.Add("X", filepath.Join(t.TempDir(), "nope"), ""); err == nil {
 		t.Fatal("expected error for nonexistent path")
+	}
+}
+
+func TestAddDefaultsToExternalStorage(t *testing.T) {
+	configPath := writeConfig(t, "projects: []\n")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	reg := NewRegistry(cfg, nil, nil)
+
+	projectDir := t.TempDir()
+	p, err := reg.Add("JobTracker", projectDir, "")
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	wantBoardDir := filepath.Join(filepath.Dir(configPath), config.BoardsDirName, "JobTracker")
+	if p.BoardDir != wantBoardDir || p.Root != projectDir {
+		t.Fatalf("unexpected dirs: root %q, board %q", p.Root, p.BoardDir)
+	}
+	if _, err := p.CreateTicket(ticket.Ticket{Title: "x"}, "test"); err != nil {
+		t.Fatalf("CreateTicket: %v", err)
+	}
+	if entries, _ := os.ReadDir(projectDir); len(entries) != 0 {
+		t.Fatalf("expected project directory untouched, found %d entries", len(entries))
+	}
+}
+
+func TestAddRejectsUnsafeName(t *testing.T) {
+	configPath := writeConfig(t, "projects: []\n")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	reg := NewRegistry(cfg, nil, nil)
+
+	if _, err := reg.Add("../escape", t.TempDir(), ""); err == nil {
+		t.Fatal("expected error for a name containing a path separator")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(configPath), "escape")); !os.IsNotExist(err) {
+		t.Fatalf("expected nothing created outside the boards directory, stat err: %v", err)
+	}
+}
+
+func TestLoadCreatesMissingExternalBoardOnly(t *testing.T) {
+	externalDir, repoDir := t.TempDir(), t.TempDir()
+	configPath := writeConfig(t, "projects:\n"+
+		"  - name: Work\n    path: "+externalDir+"\n"+
+		"  - name: Personal\n    path: "+repoDir+"\n    storage: repo\n")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+
+	projects, errs := Load(cfg)
+	if _, ok := projects["Work"]; !ok {
+		t.Fatalf("expected external project to load with a fresh board, errs: %v", errs)
+	}
+	if _, ok := projects["Personal"]; ok || len(errs) != 1 {
+		t.Fatalf("expected repo project with no taskboard.json to fail, errs: %v", errs)
+	}
+	for _, dir := range []string{externalDir, repoDir} {
+		if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+			t.Fatalf("expected %s untouched, found %d entries", dir, len(entries))
+		}
 	}
 }

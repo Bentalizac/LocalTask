@@ -845,6 +845,18 @@ input.title-input {
   resize: vertical;
 }
 
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.form-check input[type='checkbox'] {
+  margin-top: 2px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

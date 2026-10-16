@@ -92,9 +92,28 @@ func TestHandleAddProjectCreatesTaskboardAndPersists(t *testing.T) {
 		t.Fatalf("expected project persisted to config: %v", err)
 	}
 
-	// taskboard.json was bootstrapped.
+	// taskboard.json was bootstrapped outside the project, by default.
+	board := filepath.Join(filepath.Dir(configPath), config.BoardsDirName, "JobTracker", "taskboard.json")
+	if _, err := os.Stat(board); err != nil {
+		t.Fatalf("expected taskboard.json to be created at %s: %v", board, err)
+	}
+	if entries, _ := os.ReadDir(projectDir); len(entries) != 0 {
+		t.Fatalf("expected project directory untouched, found %d entries", len(entries))
+	}
+}
+
+func TestHandleAddProjectRepoStorage(t *testing.T) {
+	s, _ := newRegistryTestServer(t)
+	projectDir := t.TempDir()
+
+	rec := doRequest(t, s, http.MethodPost, "/api/projects", map[string]any{
+		"name": "JobTracker", "path": projectDir, "storage": "repo",
+	})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body)
+	}
 	if _, err := os.Stat(filepath.Join(projectDir, "taskboard.json")); err != nil {
-		t.Fatalf("expected taskboard.json to be created: %v", err)
+		t.Fatalf("expected taskboard.json in the project: %v", err)
 	}
 }
 

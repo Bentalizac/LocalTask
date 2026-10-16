@@ -125,3 +125,39 @@ projects:
 		t.Fatal("expected error for unknown project")
 	}
 }
+
+func TestLoadRejectsInvalidStorageAndNames(t *testing.T) {
+	for _, entry := range []string{
+		"  - name: A\n    path: /a\n    storage: cloud\n",
+		"  - name: a/b\n    path: /a\n",
+		"  - name: ..\n    path: /a\n",
+	} {
+		path := writeConfig(t, "projects:\n"+entry)
+		if _, err := Load(path); err == nil {
+			t.Fatalf("expected error for config entry:\n%s", entry)
+		}
+	}
+}
+
+func TestBoardDir(t *testing.T) {
+	path := writeConfig(t, `
+projects:
+  - name: Work
+    path: /code/work
+  - name: Personal
+    path: /code/personal
+    storage: repo
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	work, _ := cfg.FindProject("Work")
+	if got, _ := cfg.BoardDir(*work); got != filepath.Join(filepath.Dir(path), BoardsDirName, "Work") {
+		t.Fatalf("unexpected external board dir: %s", got)
+	}
+	personal, _ := cfg.FindProject("Personal")
+	if got, _ := cfg.BoardDir(*personal); got != "/code/personal" {
+		t.Fatalf("unexpected repo board dir: %s", got)
+	}
+}

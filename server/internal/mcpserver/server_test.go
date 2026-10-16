@@ -38,7 +38,7 @@ func newTestSession(t *testing.T) (*mcp.ClientSession, string) {
 		t.Fatalf("writing doc: %v", err)
 	}
 
-	p, err := project.LoadProject("DanceNote", root)
+	p, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestCreateAndUpdateTicketToolsPersist(t *testing.T) {
 		t.Fatalf("expected status ready, got %s", updated.Status)
 	}
 
-	reloaded, err := project.LoadProject("DanceNote", root)
+	reloaded, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}

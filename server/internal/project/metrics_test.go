@@ -4,7 +4,7 @@ import "testing"
 
 func TestMetrics(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}

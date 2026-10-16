@@ -34,7 +34,7 @@ func copyTestProject(t *testing.T) string {
 func TestAcceptanceFlow(t *testing.T) {
 	root := copyTestProject(t)
 
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestAcceptanceFlow(t *testing.T) {
 		t.Fatalf("expected status review, got %s", updated.Status)
 	}
 
-	reloaded, err := LoadProject("DanceNote", root)
+	reloaded, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload via LoadProject: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestAcceptanceFlow(t *testing.T) {
 
 func TestCreateTicketGeneratesID(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestCreateTicketGeneratesID(t *testing.T) {
 
 func TestCreateTicketRequiresTitle(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestCreateTicketRequiresTitle(t *testing.T) {
 
 func TestDeleteTicketRejectsDanglingReferences(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestDeleteTicketRejectsDanglingReferences(t *testing.T) {
 
 func TestDeleteTicketOK(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestDeleteTicketOK(t *testing.T) {
 
 func TestUpdateTicketUnknownID(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestUpdateTicketUnknownID(t *testing.T) {
 
 func TestListTicketsFilter(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -165,11 +165,11 @@ func TestListTicketsFilter(t *testing.T) {
 // both changes must survive.
 func TestConcurrentWritersDontLoseUpdates(t *testing.T) {
 	root := copyTestProject(t)
-	a, err := LoadProject("DanceNote", root)
+	a, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject a: %v", err)
 	}
-	b, err := LoadProject("DanceNote", root)
+	b, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject b: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestConcurrentWritersDontLoseUpdates(t *testing.T) {
 		t.Fatalf("b.UpdateTicket: %v", err)
 	}
 
-	final, err := LoadProject("DanceNote", root)
+	final, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestParallelCreatesGetUniqueIDs(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			p, err := LoadProject("DanceNote", root)
+			p, err := LoadProject("DanceNote", root, root)
 			if err != nil {
 				errs <- err
 				return
@@ -222,7 +222,7 @@ func TestParallelCreatesGetUniqueIDs(t *testing.T) {
 			t.Fatalf("parallel create: %v", err)
 		}
 	}
-	final, err := LoadProject("DanceNote", root)
+	final, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("reload: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestParallelCreatesGetUniqueIDs(t *testing.T) {
 
 func TestClaimTicket(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestClaimTicket(t *testing.T) {
 
 func TestUpdateTicketPreconditions(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestUpdateTicketPreconditions(t *testing.T) {
 
 func TestReadyTickets(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestReadyTickets(t *testing.T) {
 
 func TestActivityIsCapped(t *testing.T) {
 	root := copyTestProject(t)
-	p, err := LoadProject("DanceNote", root)
+	p, err := LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}

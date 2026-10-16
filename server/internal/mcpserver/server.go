@@ -29,7 +29,9 @@ Recommended workflow:
 7. When done, update_ticket to move status to "review" (or "done"), with a closing note. Mark acceptance criteria complete only once you've actually verified them. If you stop without finishing, release the ticket (assignee: "") with a note saying where you left off.
 8. If you discover follow-up work that's out of scope for the current ticket, call create_ticket for it instead of doing it inline. Keep changes scoped to what the ticket you're working describes.
 
-taskboard.json lives in the project's own repo and you can read it directly for quick context — that's fine. But prefer update_ticket/create_ticket over hand-editing it for any change: they validate the result (unique IDs, valid enum values, resolvable dependencies) before writing, write atomically, and are serialized against every other agent and the web UI so no one's change is lost. A direct file write gets none of that.`
+Use update_ticket/create_ticket for every change. They validate the result (unique IDs, valid enum values, resolvable dependencies) before writing, write atomically, and are serialized against every other agent and the web UI so no one's change is lost. A direct file write gets none of that.
+
+The board is usually stored outside the project's repo, so the repo may have no taskboard.json. Never create one there, and don't add LocalTask notes or ignore rules to the repo. If the repo does have a taskboard.json, you may read it for quick context.`
 
 // New builds an MCP server exposing tools and resources over the given
 // projects, keyed by configured name.

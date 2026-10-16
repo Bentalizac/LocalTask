@@ -27,11 +27,16 @@ import (
 // Load loads every configured project. A project that fails to load is
 // reported in errs (identified by name) rather than aborting the load of
 // the others, so one bad taskboard.json doesn't take every project down.
+//
+// An externally stored project with no board yet gets an empty one, since
+// that directory belongs to LocalTask. A repo-stored project with no
+// taskboard.json fails to load instead, so LocalTask never writes into a
+// repo it wasn't explicitly asked to (see Registry.Add).
 func Load(cfg *config.Config) (map[string]*project.Project, []error) {
 	projects := make(map[string]*project.Project, len(cfg.Projects))
 	var errs []error
 	for _, pc := range cfg.Projects {
-		p, err := project.LoadProject(pc.Name, pc.Path)
+		p, err := load(cfg, pc, pc.EffectiveStorage() == config.StorageExternal)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("project %q: %w", pc.Name, err))
 			continue
@@ -39,6 +44,48 @@ func Load(cfg *config.Config) (map[string]*project.Project, []error) {
 		projects[pc.Name] = p
 	}
 	return projects, errs
+}
+
+// load resolves pc's board directory and loads the project, first creating
+// an empty taskboard.json there if create is set and none exists.
+func load(cfg *config.Config, pc config.ProjectConfig, create bool) (*project.Project, error) {
+	boardDir, err := cfg.BoardDir(pc)
+	if err != nil {
+		return nil, err
+	}
+	if create {
+		if err := ensureTaskboard(boardDir, pc.Name); err != nil {
+			return nil, err
+		}
+	}
+	p, err := project.LoadProject(pc.Name, pc.Path, boardDir)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// ensureTaskboard creates boardDir and an empty taskboard.json in it,
+// unless that file already exists.
+func ensureTaskboard(boardDir, name string) error {
+	taskboardPath := filepath.Join(boardDir, project.TaskboardFileName)
+	if _, err := os.Stat(taskboardPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking for existing taskboard.json: %w", err)
+	}
+	if err := os.MkdirAll(boardDir, 0o755); err != nil {
+		return fmt.Errorf("creating board directory: %w", err)
+	}
+	tb := project.Taskboard{Version: 1, Project: name, Tickets: []ticket.Ticket{}}
+	data, err := json.MarshalIndent(tb, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := storage.WriteFileAtomic(taskboardPath, data, 0o644); err != nil {
+		return fmt.Errorf("creating taskboard.json: %w", err)
+	}
+	return nil
 }
 
 // ErrProjectExists is returned by Add when a project with that name is
@@ -83,13 +130,15 @@ func (r *Registry) List() map[string]*project.Project {
 	return out
 }
 
-// Add registers a new project at path under name: creating an empty
-// taskboard.json there if one doesn't already exist, loading it,
-// persisting it to the config file, and wiring it into the filesystem
-// watcher — all live, with no restart required. On failure, no partial
-// state is left registered (a taskboard.json created along the way is
-// left in place, though, since that's exactly what the caller asked for).
-func (r *Registry) Add(name, path string) (*project.Project, error) {
+// Add registers a new project at path under name with the given storage
+// mode (empty means config.StorageExternal): creating an empty
+// taskboard.json in its board directory if one doesn't already exist,
+// loading it, persisting it to the config file, and wiring it into the
+// filesystem watcher — all live, with no restart required. On failure, no
+// partial state is left registered (a taskboard.json created along the
+// way is left in place, though, since that's exactly what the caller
+// asked for).
+func (r *Registry) Add(name, path string, store config.Storage) (*project.Project, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -110,27 +159,21 @@ func (r *Registry) Add(name, path string) (*project.Project, error) {
 		return nil, fmt.Errorf("project path is not a directory: %q", path)
 	}
 
-	taskboardPath := filepath.Join(path, project.TaskboardFileName)
-	if _, err := os.Stat(taskboardPath); os.IsNotExist(err) {
-		tb := project.Taskboard{Version: 1, Project: name, Tickets: []ticket.Ticket{}}
-		data, err := json.MarshalIndent(tb, "", "  ")
-		if err != nil {
-			return nil, err
-		}
-		if err := storage.WriteFileAtomic(taskboardPath, data, 0o644); err != nil {
-			return nil, fmt.Errorf("creating taskboard.json: %w", err)
-		}
-	} else if err != nil {
-		return nil, fmt.Errorf("checking for existing taskboard.json: %w", err)
+	pc := config.ProjectConfig{Name: name, Path: path, Storage: store}
+	if err := pc.Validate(); err != nil {
+		return nil, err
 	}
-
-	p, err := project.LoadProject(name, path)
+	cfg := r.cfg
+	if cfg == nil {
+		cfg = config.New("")
+	}
+	p, err := load(cfg, pc, true)
 	if err != nil {
 		return nil, err
 	}
 
 	if r.cfg != nil {
-		if err := r.cfg.AddProject(config.ProjectConfig{Name: name, Path: path}); err != nil {
+		if err := r.cfg.AddProject(pc); err != nil {
 			return nil, err
 		}
 	}

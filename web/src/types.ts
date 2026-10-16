@@ -127,3 +127,7 @@ export interface ApiErrorBody {
   error: string
   issues?: string[]
 }
+
+// Where a project's taskboard.json lives: outside the project (the
+// default, so LocalTask writes nothing into the repo) or in its root.
+export type ProjectStorage = 'external' | 'repo'

@@ -14,6 +14,7 @@ export function AddProjectModal({ onClose, onAdded }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
+  const [inRepo, setInRepo] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   function load(path?: string) {
@@ -47,6 +48,7 @@ export function AddProjectModal({ onClose, onAdded }: Props) {
     if (!listing) return
     const base = listing.path.split('/').filter(Boolean).pop() ?? listing.path
     setName(base)
+    setInRepo(false)
     setNaming(true)
   }
 
@@ -56,7 +58,7 @@ export function AddProjectModal({ onClose, onAdded }: Props) {
     setSubmitting(true)
     setError(null)
     try {
-      const project = await addProject(name.trim(), listing.path)
+      const project = await addProject(name.trim(), listing.path, inRepo ? 'repo' : 'external')
       onAdded(project.name)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add project')
@@ -136,11 +138,18 @@ export function AddProjectModal({ onClose, onAdded }: Props) {
                 autoFocus
               />
             </div>
+            <label className="form-check">
+              <input type="checkbox" checked={inRepo} onChange={(e) => setInRepo(e.target.checked)} />
+              Store the board in this directory (taskboard.json, committed with the project)
+            </label>
             <div className="page-subtitle" style={{ marginBottom: 12 }}>
               {listing.path}
-              {listing.has_taskboard
-                ? ' — already has a taskboard.json, will be added as-is.'
-                : ' — no taskboard.json yet, an empty one will be created.'}
+              {inRepo
+                ? listing.has_taskboard
+                  ? ' — already has a taskboard.json, will be added as-is.'
+                  : ' — no taskboard.json yet, an empty one will be created here.'
+                : ' — the board is stored outside this directory. LocalTask writes nothing here.'}
+              {!inRepo && listing.has_taskboard && ' This directory already has a taskboard.json; check the box to use it.'}
             </div>
             {error && <div className="error-banner">{error}</div>}
             <div className="form-actions">

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 
+	"localtask/internal/config"
 	"localtask/internal/project"
 	"localtask/internal/registry"
 )
@@ -51,13 +52,15 @@ func (s *Server) handleGetProject(w http.ResponseWriter, r *http.Request) {
 }
 
 type addProjectRequest struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
+	Name    string         `json:"name"`
+	Path    string         `json:"path"`
+	Storage config.Storage `json:"storage,omitempty"`
 }
 
 // handleAddProject registers a project at an arbitrary path found via the
 // GET /api/browse directory navigator, bootstrapping an empty
-// taskboard.json there if one doesn't already exist. Persists to the
+// taskboard.json in its board directory if one doesn't already exist. The
+// board lives outside the project unless storage is "repo". Persists to the
 // config file and is immediately queryable — no restart required.
 func (s *Server) handleAddProject(w http.ResponseWriter, r *http.Request) {
 	var req addProjectRequest
@@ -70,7 +73,7 @@ func (s *Server) handleAddProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := s.registry.Add(req.Name, req.Path)
+	p, err := s.registry.Add(req.Name, req.Path, req.Storage)
 	if err != nil {
 		if errors.Is(err, registry.ErrProjectExists) {
 			writeError(w, http.StatusConflict, err)

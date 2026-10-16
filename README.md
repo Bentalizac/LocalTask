@@ -1,8 +1,8 @@
 # LocalTask
 
 A lightweight, local-only Jira-like task tracker for software projects. It runs
-entirely on your machine, reads and writes plain JSON (`taskboard.json`) that
-lives in each project's own repo, and exposes that data to both a web UI and
+entirely on your machine, reads and writes plain JSON (`taskboard.json`) for
+each project, and exposes that data to both a web UI and
 coding agents (via [MCP](https://modelcontextprotocol.io)) through the same
 underlying service — so a human in the browser and an agent working through
 MCP always see consistent state.
@@ -32,9 +32,35 @@ resolves to `127.0.0.1` automatically — no `/etc/hosts` edit needed).
 `projects/` on your host is bind-mounted to `/projects` in the container (see
 `compose.yaml`) — put project subdirectories there, or mount other host paths
 in the same file if your projects live elsewhere. Each entry in
-`taskboard.config.yaml` points at one, by its container-side path. If a
-project directory has no `taskboard.json` yet, the "Add Project" button in the
-UI will bootstrap an empty one.
+`taskboard.config.yaml` points at one, by its container-side path.
+
+### Where each board lives
+
+By default, LocalTask writes nothing into a project's directory. Each board is
+stored at `projects/boards/<name>/taskboard.json`, next to
+`taskboard.config.yaml`, and is created empty the first time it's needed. Use
+this for repos you don't want LocalTask to touch, such as work repos.
+
+To commit a board with its project instead, set `storage: repo` on that
+project. LocalTask then reads and writes `taskboard.json` at the project root:
+
+```yaml
+projects:
+  - name: WorkService
+    path: /code/work-service          # board in projects/boards/WorkService/
+  - name: SideProject
+    path: /code/side-project
+    storage: repo                     # board in /code/side-project/taskboard.json
+```
+
+A `storage: repo` project must already have a `taskboard.json`, or it fails to
+load. The "Add Project" button in the UI has a checkbox for the same choice,
+and creates the board for you. Project names can't contain `/` or `\`,
+because an external board's directory is named after its project.
+
+In both modes, LocalTask only reads the project itself: its Markdown docs and
+its git branch, status, and log. Git runs with `GIT_OPTIONAL_LOCKS=0`, so
+reading status never rewrites `.git/index`.
 
 The host port (`8420` by default) only binds to `127.0.0.1` — the app is
 never exposed beyond localhost. See `compose.yaml` for the full explanation
@@ -78,7 +104,7 @@ Point your MCP client at the built binary with `-config` pointing to your
 
 Any number of agents (separate sessions, each with its own MCP server
 process, plus their subagents) can share a board. Every write takes a lock
-on the project directory, re-reads `taskboard.json`, applies only its own
+on the board's directory, re-reads `taskboard.json`, applies only its own
 change, and writes it back, so concurrent changes are never lost.
 `claim_ticket` atomically assigns a ticket to the calling agent, so two
 agents can't both pick up the same work. Agents pass an `agent` name on
@@ -90,8 +116,10 @@ is laid out to work in a narrow side pane next to your agent sessions. Resources
 
 ### Using it from a coding agent's `CLAUDE.md`
 
-Drop this into the `CLAUDE.md` of any repo tracked in LocalTask, filling in
-the placeholders:
+For a `storage: repo` project, drop this into the repo's `CLAUDE.md`, filling
+in the placeholders. For a repo you don't want to change, skip it, or put it
+in your user-level `~/.claude/CLAUDE.md` instead. The MCP server sends its own
+workflow instructions either way.
 
 ```markdown
 ## Task tracking

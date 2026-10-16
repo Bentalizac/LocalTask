@@ -5,8 +5,8 @@ package project
 
 import "localtask/internal/ticket"
 
-// TaskboardFileName is the name of the per-project task file, always
-// located at the project's root directory.
+// TaskboardFileName is the name of the per-project task file, located in
+// the project's BoardDir.
 const TaskboardFileName = "taskboard.json"
 
 // Taskboard is the on-disk (and in-memory) representation of a project's

@@ -38,7 +38,7 @@ func TestWatcherReloadsOnExternalChange(t *testing.T) {
 	root := t.TempDir()
 	writeTaskboard(t, root, "original")
 
-	p, err := project.LoadProject("DanceNote", root)
+	p, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestWatcherIgnoresInvalidExternalEditThenRecovers(t *testing.T) {
 	root := t.TempDir()
 	writeTaskboard(t, root, "original")
 
-	p, err := project.LoadProject("DanceNote", root)
+	p, err := project.LoadProject("DanceNote", root, root)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestWatcherIgnoresInvalidExternalEditThenRecovers(t *testing.T) {
 func TestWatcherAddAfterStart(t *testing.T) {
 	firstRoot := t.TempDir()
 	writeTaskboard(t, firstRoot, "original")
-	first, err := project.LoadProject("DanceNote", firstRoot)
+	first, err := project.LoadProject("DanceNote", firstRoot, firstRoot)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestWatcherAddAfterStart(t *testing.T) {
 
 	secondRoot := t.TempDir()
 	writeTaskboardNamed(t, secondRoot, "JobTracker", "original")
-	second, err := project.LoadProject("JobTracker", secondRoot)
+	second, err := project.LoadProject("JobTracker", secondRoot, secondRoot)
 	if err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
