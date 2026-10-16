@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type DragEvent } from "react";
 import { useParams } from "react-router-dom";
 import { useTickets } from "../hooks/useTickets";
+import { useJiraBaseUrl } from "../hooks/useJiraBaseUrl";
 import { TicketCard } from "../components/TicketCard";
 import { NewTicketModal } from "../components/NewTicketModal";
 import { BOARD_COLUMNS } from "../types";
@@ -9,6 +10,7 @@ import type { TicketStatus } from "../types";
 export function BoardPage() {
   const { project = "" } = useParams<{ project: string }>();
   const { tickets, error, setStatus, create } = useTickets(project);
+  const jiraBaseUrl = useJiraBaseUrl(project);
   const [showNew, setShowNew] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<TicketStatus | null>(
     null,
@@ -78,6 +80,7 @@ export function BoardPage() {
                     key={t.id}
                     project={project}
                     ticket={t}
+                    jiraBaseUrl={jiraBaseUrl}
                     onStatusChange={setStatus}
                   />
                 ))}

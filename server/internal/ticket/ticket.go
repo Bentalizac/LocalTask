@@ -3,7 +3,9 @@
 package ticket
 
 import (
+	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -93,6 +95,9 @@ type Ticket struct {
 	Tags               []string              `json:"tags,omitempty"`
 	RelatedDocs        []string              `json:"related_docs,omitempty"`
 	RelatedCode        []string              `json:"related_code,omitempty"`
+	// Jira lists the keys of the Jira issues (e.g. "RT-1234") this ticket
+	// is part of. LocalTask only stores and links them; it never calls Jira.
+	Jira []string `json:"jira,omitempty"`
 
 	// Assignee names the agent (or person) currently working the ticket.
 	// Agents self-report a name; see the MCP server's claim_ticket tool.
@@ -146,6 +151,17 @@ func (t Ticket) AcceptanceCriteriaProgress() (complete, total int) {
 	}
 	return complete, total
 }
+
+// HasJira reports whether the ticket links the given Jira key, ignoring
+// case.
+func (t Ticket) HasJira(key string) bool {
+	return slices.ContainsFunc(t.Jira, func(k string) bool { return strings.EqualFold(k, key) })
+}
+
+// JiraKeyPattern matches a Jira issue key: a project key of uppercase
+// letters, digits, or underscores starting with a letter, then a dash and
+// an issue number.
+var JiraKeyPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*-[1-9][0-9]*$`)
 
 // HasTag reports whether the ticket carries the given tag.
 func (t Ticket) HasTag(tag string) bool {

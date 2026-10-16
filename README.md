@@ -45,6 +45,7 @@ To commit a board with its project instead, set `storage: repo` on that
 project. LocalTask then reads and writes `taskboard.json` at the project root:
 
 ```yaml
+jira_base_url: https://your-site.atlassian.net   # optional; see "Jira links"
 projects:
   - name: WorkService
     path: /code/work-service          # board in projects/boards/WorkService/
@@ -172,7 +173,7 @@ Dockerfile         multi-stage build (frontend + both Go binaries)
 
 Tickets support `id`, `title`, `status`, `priority`, `type` (required), plus
 `description`, `parent`, `depends_on`, `acceptance_criteria`, `constraints`,
-`tags`, `related_docs`, and `related_code`. Statuses:
+`tags`, `related_docs`, `related_code`, and `jira`. Statuses:
 `backlog`/`ready`/`in_progress`/`blocked`/`review`/`done`/`cancelled`.
 Priorities: `low`/`medium`/`high`/`critical`. Types:
 `epic`/`story`/`task`/`bug`/`subtask`.
@@ -188,3 +189,17 @@ one deliberate exception is the "Add Project" directory browser, which can
 list any directory the server process can read, by design (see
 `internal/browse`), since its entire purpose is finding a new project
 before it's configured.
+
+## Jira links
+
+A ticket's `jira` field lists the keys of the Jira issues it's part of, such
+as `["RT-1234", "RT-1250"]`. Keys show as chips on the board, the list, and
+the ticket page. Ticket search matches them too.
+
+Set `jira_base_url` at the top of `taskboard.config.yaml` to make each chip
+link to `<jira_base_url>/browse/<key>`. A project can override it with its
+own `jira_base_url`. Without one, keys show unlinked.
+
+LocalTask never calls Jira. It needs no credentials and doesn't sync Jira
+status. Agents get the keys and the base URL over MCP, so an agent with Jira
+tools can look up the issue behind a task.

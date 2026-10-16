@@ -54,6 +54,8 @@ export interface Ticket {
   tags?: string[]
   related_docs?: string[]
   related_code?: string[]
+  // Keys of the Jira issues this ticket is part of, e.g. "RT-1234".
+  jira?: string[]
   assignee?: string
   updated_at?: string
   activity?: ActivityEntry[]
@@ -87,6 +89,7 @@ export interface ProjectSummary {
   description?: string
   version: number
   metrics: ProjectMetrics
+  jira_base_url?: string
 }
 
 export interface Doc {

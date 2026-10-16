@@ -41,7 +41,7 @@ func (s *server) registerTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "search_tickets",
-		Description: "Search a project's tickets by matching text against title, description, and tags.",
+		Description: "Search a project's tickets by matching text against title, description, tags, and Jira keys.",
 	}, s.searchTickets)
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -74,11 +74,12 @@ type projectInfo struct {
 	Description string          `json:"description,omitempty"`
 	Version     int             `json:"version"`
 	Metrics     project.Metrics `json:"metrics"`
+	JiraBaseURL string          `json:"jira_base_url,omitempty" jsonschema:"Jira site that tickets' jira keys belong to; an issue's URL is <jira_base_url>/browse/<key>"`
 }
 
 func toProjectInfo(name string, p *project.Project) projectInfo {
 	snap := p.Snapshot()
-	return projectInfo{Name: name, Description: snap.Description, Version: snap.Version, Metrics: p.Metrics()}
+	return projectInfo{Name: name, Description: snap.Description, Version: snap.Version, Metrics: p.Metrics(), JiraBaseURL: p.JiraBaseURL}
 }
 
 // listProjectsResult wraps the project list in a named field rather than
@@ -126,6 +127,7 @@ type projectContext struct {
 	Project        string          `json:"project"`
 	Description    string          `json:"description,omitempty"`
 	Metrics        project.Metrics `json:"metrics"`
+	JiraBaseURL    string          `json:"jira_base_url,omitempty" jsonschema:"Jira site that tickets' jira keys belong to; an issue's URL is <jira_base_url>/browse/<key>"`
 	ActiveTickets  []ticket.Ticket `json:"active_tickets"`
 	BlockedTickets []ticket.Ticket `json:"blocked_tickets"`
 	Documentation  []string        `json:"documentation"`
@@ -174,6 +176,7 @@ func (s *server) getProjectContext(ctx context.Context, _ *mcp.CallToolRequest, 
 		Project:        args.Project,
 		Description:    snap.Description,
 		Metrics:        p.Metrics(),
+		JiraBaseURL:    p.JiraBaseURL,
 		ActiveTickets:  active,
 		BlockedTickets: blocked,
 		Documentation:  docs,
@@ -253,7 +256,7 @@ func (s *server) getTicket(_ context.Context, _ *mcp.CallToolRequest, args ticke
 
 type searchTicketsArgs struct {
 	Project string `json:"project" jsonschema:"the configured project name"`
-	Query   string `json:"query" jsonschema:"text to match against title, description, and tags"`
+	Query   string `json:"query" jsonschema:"text to match against title, description, tags, and Jira keys"`
 }
 
 func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args searchTicketsArgs) (*mcp.CallToolResult, listTicketsResult, error) {
@@ -267,7 +270,8 @@ func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args s
 		if q == "" ||
 			strings.Contains(strings.ToLower(t.Title), q) ||
 			strings.Contains(strings.ToLower(t.Description), q) ||
-			t.HasTag(q) {
+			t.HasTag(q) ||
+			t.HasJira(q) {
 			matches = append(matches, t)
 		}
 	}
@@ -294,6 +298,7 @@ type createTicketArgs struct {
 	Tags               []string                     `json:"tags,omitempty"`
 	RelatedDocs        []string                     `json:"related_docs,omitempty"`
 	RelatedCode        []string                     `json:"related_code,omitempty"`
+	Jira               []string                     `json:"jira,omitempty" jsonschema:"keys of the Jira issues this ticket is part of, e.g. RT-1234"`
 	Assignee           string                       `json:"assignee,omitempty" jsonschema:"agent to assign the ticket to"`
 	Agent              string                       `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
 }
@@ -318,6 +323,7 @@ func (s *server) createTicket(_ context.Context, _ *mcp.CallToolRequest, args cr
 		Tags:               args.Tags,
 		RelatedDocs:        args.RelatedDocs,
 		RelatedCode:        args.RelatedCode,
+		Jira:               args.Jira,
 		Assignee:           args.Assignee,
 	}, args.Agent)
 	if err != nil {
@@ -346,6 +352,7 @@ type updateTicketArgs struct {
 	Tags               *[]string                     `json:"tags,omitempty"`
 	RelatedDocs        *[]string                     `json:"related_docs,omitempty"`
 	RelatedCode        *[]string                     `json:"related_code,omitempty"`
+	Jira               *[]string                     `json:"jira,omitempty" jsonschema:"the full replacement list of Jira issue keys this ticket is part of, e.g. RT-1234"`
 	Assignee           *string                       `json:"assignee,omitempty" jsonschema:"set the assignee; empty string releases the ticket"`
 	Note               *string                       `json:"note,omitempty" jsonschema:"a progress or handoff note to append to the ticket's activity log"`
 	Agent              string                        `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
@@ -364,6 +371,7 @@ func (a updateTicketArgs) toPatch() project.TicketPatch {
 		Tags:               a.Tags,
 		RelatedDocs:        a.RelatedDocs,
 		RelatedCode:        a.RelatedCode,
+		Jira:               a.Jira,
 		Assignee:           a.Assignee,
 		Note:               a.Note,
 		Author:             a.Agent,

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"localtask/internal/pathutil"
+	"localtask/internal/ticket"
 )
 
 // ValidationError reports every problem found in a taskboard, rather than
@@ -64,6 +65,11 @@ func validateTaskboard(tb *Taskboard, root string) error {
 		for _, dep := range t.DependsOn {
 			if !ids[dep] {
 				issues = append(issues, prefix+fmt.Sprintf("dependency %q does not exist", dep))
+			}
+		}
+		for _, key := range t.Jira {
+			if !ticket.JiraKeyPattern.MatchString(key) {
+				issues = append(issues, prefix+fmt.Sprintf("jira %q: not a Jira issue key like ABC-123", key))
 			}
 		}
 		for _, rel := range t.RelatedDocs {

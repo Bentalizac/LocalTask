@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { getTicket, listTickets, updateTicket } from '../api'
 import { AssigneeChip, PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
 import { usePolling } from '../hooks/usePolling'
+import { useJiraBaseUrl } from '../hooks/useJiraBaseUrl'
+import { JiraKeys } from '../components/JiraKeys'
+import { parseJiraKeys } from '../jira'
 import { relativeTime } from '../time'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 import type { Ticket } from '../types'
@@ -12,11 +15,18 @@ export function TicketDetailPage() {
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<{ title: string; description: string; tags: string; constraints: string } | null>(null)
+  const [draft, setDraft] = useState<{
+    title: string
+    description: string
+    tags: string
+    jira: string
+    constraints: string
+  } | null>(null)
   const [saving, setSaving] = useState(false)
   const [children, setChildren] = useState<Ticket[]>([])
   const [note, setNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
+  const jiraBaseUrl = useJiraBaseUrl(project)
 
   function load() {
     setError(null)
@@ -84,6 +94,7 @@ export function TicketDetailPage() {
       title: ticket.title,
       description: ticket.description ?? '',
       tags: (ticket.tags ?? []).join(', '),
+      jira: (ticket.jira ?? []).join(', '),
       constraints: (ticket.constraints ?? []).join('\n'),
     })
     setEditing(true)
@@ -98,6 +109,7 @@ export function TicketDetailPage() {
         title: draft.title.trim(),
         description: draft.description.trim() || undefined,
         tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        jira: parseJiraKeys(draft.jira),
         constraints: draft.constraints.split('\n').map((c) => c.trim()).filter(Boolean),
       })
       setEditing(false)
@@ -349,6 +361,24 @@ export function TicketDetailPage() {
                     {t}
                   </span>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card card-pad detail-section">
+            <h2 className="section-title">Jira</h2>
+            {editing ? (
+              <input
+                className="title-input"
+                value={draft?.jira ?? ''}
+                onChange={(e) => setDraft((d) => (d ? { ...d, jira: e.target.value } : d))}
+                placeholder="RT-1234, RT-1250"
+              />
+            ) : (ticket.jira ?? []).length === 0 ? (
+              <div className="empty-note">No linked Jira issues.</div>
+            ) : (
+              <div className="ticket-card-badges">
+                <JiraKeys keys={ticket.jira} baseUrl={jiraBaseUrl} />
               </div>
             )}
           </div>

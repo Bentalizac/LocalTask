@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTickets } from '../hooks/useTickets'
+import { useJiraBaseUrl } from '../hooks/useJiraBaseUrl'
+import { JiraKeys } from '../components/JiraKeys'
 import { PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 
@@ -8,6 +10,7 @@ export function ListPage() {
   const { project = '' } = useParams<{ project: string }>()
   const { tickets, error } = useTickets(project)
   const navigate = useNavigate()
+  const jiraBaseUrl = useJiraBaseUrl(project)
 
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
@@ -30,7 +33,7 @@ export function ListPage() {
       if (type && t.type !== type) return false
       if (parent && t.parent !== parent) return false
       if (tag && !(t.tags ?? []).includes(tag)) return false
-      if (q && !(t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q))) {
+      if (q && !(t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q) || (t.jira ?? []).some((k) => k.toLowerCase().includes(q)))) {
         return false
       }
       return true
@@ -54,7 +57,7 @@ export function ListPage() {
       <div className="filters-bar">
         <input
           type="search"
-          placeholder="Search title, id, description…"
+          placeholder="Search title, id, description, Jira…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -113,6 +116,7 @@ export function ListPage() {
             <th>Priority</th>
             <th>Type</th>
             <th>Progress</th>
+            <th>Jira</th>
             <th>Tags</th>
           </tr>
         </thead>
@@ -139,6 +143,9 @@ export function ListPage() {
                   <TypeBadge type={t.type} />
                 </td>
                 <td>{criteria.length > 0 ? `${complete}/${criteria.length}` : '—'}</td>
+                <td>
+                  {(t.jira ?? []).length > 0 ? <JiraKeys keys={t.jira} baseUrl={jiraBaseUrl} /> : '—'}
+                </td>
                 <td>{(t.tags ?? []).join(', ') || '—'}</td>
               </tr>
             )

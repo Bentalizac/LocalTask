@@ -161,3 +161,32 @@ projects:
 		t.Fatalf("unexpected repo board dir: %s", got)
 	}
 }
+
+func TestJiraBaseURL(t *testing.T) {
+	path := writeConfig(t, `
+jira_base_url: https://example.atlassian.net/
+projects:
+  - name: Default
+    path: /code/a
+  - name: Override
+    path: /code/b
+    jira_base_url: https://other.atlassian.net
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	def, _ := cfg.FindProject("Default")
+	if got := cfg.JiraBaseURLFor(*def); got != "https://example.atlassian.net" {
+		t.Fatalf("unexpected default jira base url: %s", got)
+	}
+	override, _ := cfg.FindProject("Override")
+	if got := cfg.JiraBaseURLFor(*override); got != "https://other.atlassian.net" {
+		t.Fatalf("unexpected override jira base url: %s", got)
+	}
+
+	bad := writeConfig(t, "jira_base_url: example.atlassian.net\nprojects: []\n")
+	if _, err := Load(bad); err == nil {
+		t.Fatal("expected error for a jira_base_url without a scheme")
+	}
+}

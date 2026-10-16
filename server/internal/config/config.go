@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,6 +36,8 @@ type ProjectConfig struct {
 	Name    string  `yaml:"name"`
 	Path    string  `yaml:"path"`
 	Storage Storage `yaml:"storage,omitempty"`
+	// JiraBaseURL overrides Config.JiraBaseURL for this project.
+	JiraBaseURL string `yaml:"jira_base_url,omitempty"`
 }
 
 // EffectiveStorage returns the project's storage mode, applying the
@@ -48,7 +51,10 @@ func (pc ProjectConfig) EffectiveStorage() Storage {
 
 // Config is the top-level shape of the taskboard config file.
 type Config struct {
-	Projects []ProjectConfig `yaml:"projects"`
+	// JiraBaseURL is the Jira site that tickets' Jira keys link to, e.g.
+	// "https://example.atlassian.net". Optional.
+	JiraBaseURL string          `yaml:"jira_base_url,omitempty"`
+	Projects    []ProjectConfig `yaml:"projects"`
 
 	path string // set by Load; used by Save/AddProject
 }
@@ -116,6 +122,9 @@ func (c *Config) AddProject(pc ProjectConfig) error {
 // that names are unique.
 func (c *Config) Validate() error {
 	var issues []string
+	if err := validateJiraBaseURL(c.JiraBaseURL); err != nil {
+		issues = append(issues, err.Error())
+	}
 	seen := make(map[string]bool, len(c.Projects))
 	for i, p := range c.Projects {
 		if p.Name == "" {
@@ -149,7 +158,29 @@ func (pc ProjectConfig) Validate() error {
 	if pc.Name == "." || pc.Name == ".." || strings.ContainsAny(pc.Name, `/\`) {
 		return fmt.Errorf("invalid project name %q: must not be \".\", \"..\", or contain a path separator", pc.Name)
 	}
+	return validateJiraBaseURL(pc.JiraBaseURL)
+}
+
+// validateJiraBaseURL accepts an empty value or an absolute http(s) URL.
+func validateJiraBaseURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("invalid jira_base_url %q: want an absolute http(s) URL like https://example.atlassian.net", raw)
+	}
 	return nil
+}
+
+// JiraBaseURLFor returns the Jira site pc's tickets link to: its own
+// jira_base_url, else the top-level one, without a trailing slash.
+func (c *Config) JiraBaseURLFor(pc ProjectConfig) string {
+	base := pc.JiraBaseURL
+	if base == "" {
+		base = c.JiraBaseURL
+	}
+	return strings.TrimRight(base, "/")
 }
 
 // BoardDir returns the directory holding pc's taskboard.json: the project

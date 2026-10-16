@@ -16,6 +16,7 @@ type projectResponse struct {
 	Description string          `json:"description,omitempty"`
 	Version     int             `json:"version"`
 	Metrics     project.Metrics `json:"metrics"`
+	JiraBaseURL string          `json:"jira_base_url,omitempty"`
 }
 
 func toProjectResponse(name string, p *project.Project) projectResponse {
@@ -25,6 +26,7 @@ func toProjectResponse(name string, p *project.Project) projectResponse {
 		Description: snap.Description,
 		Version:     snap.Version,
 		Metrics:     p.Metrics(),
+		JiraBaseURL: p.JiraBaseURL,
 	}
 }
 

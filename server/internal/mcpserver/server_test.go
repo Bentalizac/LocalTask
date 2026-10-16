@@ -340,3 +340,36 @@ func TestClaimAndNoteWorkflow(t *testing.T) {
 		t.Fatalf("unexpected last activity: %+v", last)
 	}
 }
+
+func TestJiraKeysCreateSearchAndValidate(t *testing.T) {
+	session, _ := newTestSession(t)
+
+	created, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
+		"project": "DanceNote",
+		"title":   "Part of a Jira story",
+		"jira":    []string{"RT-1234"},
+	})
+	if res.IsError {
+		t.Fatalf("create_ticket: %s", errorText(res))
+	}
+	if len(created.Jira) != 1 || created.Jira[0] != "RT-1234" {
+		t.Fatalf("expected jira key on created ticket, got %+v", created.Jira)
+	}
+
+	out, res := callTool[listTicketsResult](t, session, "search_tickets", map[string]any{
+		"project": "DanceNote",
+		"query":   "rt-1234",
+	})
+	if res.IsError || len(out.Tickets) != 1 || out.Tickets[0].ID != created.ID {
+		t.Fatalf("expected search by jira key to find %s, got %+v", created.ID, out)
+	}
+
+	_, res = callTool[ticket.Ticket](t, session, "update_ticket", map[string]any{
+		"project":   "DanceNote",
+		"ticket_id": created.ID,
+		"jira":      []string{"not a key"},
+	})
+	if !res.IsError {
+		t.Fatal("expected an invalid jira key to be rejected")
+	}
+}

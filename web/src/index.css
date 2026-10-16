@@ -219,6 +219,17 @@ button {
   color: var(--text-muted);
 }
 
+.jira-tag {
+  background: #e9f2ff;
+  color: #0055cc;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.jira-tag:hover {
+  background: #cce0ff;
+}
+
 /* Cards */
 
 .card {

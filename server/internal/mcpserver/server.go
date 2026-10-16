@@ -27,7 +27,8 @@ Recommended workflow:
 5. Call get_ticket to read its full detail: acceptance criteria, dependencies, constraints, related docs/code, and the activity log (notes from whoever worked it before).
 6. Do the work, leaving short progress notes via update_ticket(note=...) at meaningful milestones — what you finished, what you're stuck on, what the next agent needs to know.
 7. When done, update_ticket to move status to "review" (or "done"), with a closing note. Mark acceptance criteria complete only once you've actually verified them. If you stop without finishing, release the ticket (assignee: "") with a note saying where you left off.
-8. If you discover follow-up work that's out of scope for the current ticket, call create_ticket for it instead of doing it inline. Keep changes scoped to what the ticket you're working describes.
+8. A ticket's "jira" field lists the Jira issues (e.g. RT-1234) it is part of; get_project gives the Jira site URL. If you have Jira tools, read those issues for the wider goal. Add a ticket's Jira keys when you learn them.
+9. If you discover follow-up work that's out of scope for the current ticket, call create_ticket for it instead of doing it inline. Keep changes scoped to what the ticket you're working describes.
 
 Use update_ticket/create_ticket for every change. They validate the result (unique IDs, valid enum values, resolvable dependencies) before writing, write atomically, and are serialized against every other agent and the web UI so no one's change is lost. A direct file write gets none of that.
 

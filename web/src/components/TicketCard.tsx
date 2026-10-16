@@ -4,15 +4,17 @@ import { PriorityBadge, TypeBadge } from './Badges'
 import type { Ticket, TicketStatus } from '../types'
 import { BOARD_COLUMNS } from '../types'
 import { AssigneeChip } from './Badges'
+import { JiraKeys } from './JiraKeys'
 import { isStale, relativeTime } from '../time'
 
 interface Props {
   project: string
   ticket: Ticket
+  jiraBaseUrl?: string
   onStatusChange: (id: string, status: TicketStatus) => void
 }
 
-export function TicketCard({ project, ticket, onStatusChange }: Props) {
+export function TicketCard({ project, ticket, jiraBaseUrl, onStatusChange }: Props) {
   const [isDragging, setIsDragging] = useState(false)
   const criteria = ticket.acceptance_criteria ?? []
   const complete = criteria.filter((c) => c.complete).length
@@ -49,6 +51,7 @@ export function TicketCard({ project, ticket, onStatusChange }: Props) {
       <div className="ticket-card-badges">
         <PriorityBadge priority={ticket.priority} />
         <TypeBadge type={ticket.type} />
+        <JiraKeys keys={ticket.jira} baseUrl={jiraBaseUrl} />
         {(ticket.tags ?? []).map((tag) => (
           <span className="tag" key={tag}>
             {tag}

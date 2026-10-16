@@ -62,6 +62,7 @@ func load(cfg *config.Config, pc config.ProjectConfig, create bool) (*project.Pr
 	if err != nil {
 		return nil, err
 	}
+	p.JiraBaseURL = cfg.JiraBaseURLFor(pc)
 	return p, nil
 }
 

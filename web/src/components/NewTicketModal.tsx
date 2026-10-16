@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 import type { CreateTicketInput } from '../api'
+import { parseJiraKeys } from '../jira'
 
 interface Props {
   onClose: () => void
@@ -14,6 +15,7 @@ export function NewTicketModal({ onClose, onCreate }: Props) {
   const [status, setStatus] = useState('backlog')
   const [priority, setPriority] = useState('medium')
   const [tags, setTags] = useState('')
+  const [jira, setJira] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,6 +38,7 @@ export function NewTicketModal({ onClose, onCreate }: Props) {
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
+        jira: parseJiraKeys(jira),
       })
       onClose()
     } catch (err) {
@@ -95,6 +98,10 @@ export function NewTicketModal({ onClose, onCreate }: Props) {
           <div className="form-row">
             <label htmlFor="tags">Tags (comma separated)</label>
             <input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} />
+          </div>
+          <div className="form-row">
+            <label htmlFor="jira">Jira issues</label>
+            <input id="jira" value={jira} onChange={(e) => setJira(e.target.value)} placeholder="RT-1234, RT-1250" />
           </div>
           {error && <div className="error-banner">{error}</div>}
           <div className="form-actions">

@@ -31,6 +31,9 @@ type Project struct {
 	// with the project, or is a directory outside the project otherwise
 	// (see config.Storage).
 	BoardDir string
+	// JiraBaseURL is the Jira site that tickets' Jira keys link to, e.g.
+	// "https://example.atlassian.net". Empty means keys aren't linked.
+	JiraBaseURL string
 
 	mu        sync.RWMutex
 	taskboard Taskboard
@@ -248,6 +251,7 @@ type TicketPatch struct {
 	Tags               *[]string
 	RelatedDocs        *[]string
 	RelatedCode        *[]string
+	Jira               *[]string
 
 	// Note, if set, is appended to the ticket's activity log.
 	Note *string
@@ -310,6 +314,9 @@ func applyPatch(t ticket.Ticket, patch TicketPatch) ticket.Ticket {
 	}
 	if patch.RelatedCode != nil {
 		t.RelatedCode = *patch.RelatedCode
+	}
+	if patch.Jira != nil {
+		t.Jira = *patch.Jira
 	}
 	if patch.Note != nil && *patch.Note != "" {
 		t.AddActivity(ticket.ActivityEntry{At: at, Author: patch.Author, Kind: ticket.ActivityNote, Text: *patch.Note})
