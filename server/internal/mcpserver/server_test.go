@@ -405,3 +405,19 @@ func TestReleaseTicketTool(t *testing.T) {
 		t.Fatalf("expected unassigned/ready, got %q/%s", released.Assignee, released.Status)
 	}
 }
+
+func TestInstructionsCoverOrchestratedAgents(t *testing.T) {
+	session, _ := newTestSession(t)
+
+	got := session.InitializeResult().Instructions
+	for _, want := range []string{
+		"If your prompt already names your ticket",
+		"Don't call get_project_context or next_ready_tickets",
+		"Don't call create_ticket for follow-up work, unless your prompt says to",
+		"don't touch the board at all",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("instructions lack %q", want)
+		}
+	}
+}

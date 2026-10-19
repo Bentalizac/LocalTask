@@ -32,6 +32,13 @@ Recommended workflow:
 8. A ticket's "jira" field lists the Jira issues (e.g. RT-1234) it is part of; get_project gives the Jira site URL. If you have Jira tools, read those issues for the wider goal. Add a ticket's Jira keys when you learn them.
 9. If you discover follow-up work that's out of scope for the current ticket, call create_ticket for it instead of doing it inline. Keep changes scoped to what the ticket you're working describes.
 
+If your prompt already names your ticket, an orchestrator (a workflow script, or a parent agent) assigned it to you. Then:
+- Skip steps 1 and 3. Don't call get_project_context or next_ready_tickets; the orchestrator already chose your work.
+- Claim that ticket (step 4) under the agent name your prompt gives, or a short name for your role. Read it (step 5) only for detail your prompt doesn't include.
+- Notes and status changes (steps 6 and 7) still apply. They're how a human watching the board follows the run.
+- Don't call create_ticket for follow-up work, unless your prompt says to. Report it in your result, so the orchestrator can merge duplicates across agents and file each one once.
+- If your prompt says you're reviewing or verifying another agent's work, don't touch the board at all.
+
 Use update_ticket/create_ticket for every change. They validate the result (unique IDs, valid enum values, resolvable dependencies) before writing, write atomically, and are serialized against every other agent and the web UI so no one's change is lost. A direct file write gets none of that.
 
 The board is usually stored outside the project's repo, so the repo may have no taskboard.json. Never create one there, and don't add LocalTask notes or ignore rules to the repo. If the repo does have a taskboard.json, you may read it for quick context.`
