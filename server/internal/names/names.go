@@ -2,8 +2,10 @@
 // agents shows who holds what at a glance.
 //
 // The names are first names of characters from Robert Jordan's The Wheel of
-// Time, taken once from Wikipedia's "List of The Wheel of Time characters".
-// They ship with the binary: LocalTask makes no outbound requests.
+// Time, taken from Karl Hammond's Compendium of Wheel of Time Characters
+// (https://hammondkd.github.io/WoT-compendium/). They ship with the binary:
+// LocalTask makes no outbound requests. To add names, append them to
+// wot.txt, one per line.
 package names
 
 import (

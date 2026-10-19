@@ -426,9 +426,8 @@ func TestInstructionsCoverOrchestratedAgents(t *testing.T) {
 func TestPickAgentNameAvoidsAssignees(t *testing.T) {
 	session, _ := newTestSession(t)
 
-	// Hold every bundled name but one, so the pick has exactly one answer.
-	free := names.All[len(names.All)-1]
-	for _, name := range names.All[:len(names.All)-1] {
+	held := map[string]bool{}
+	for _, name := range names.All[:3] {
 		_, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
 			"project":  "DanceNote",
 			"title":    "Held by " + name,
@@ -437,13 +436,20 @@ func TestPickAgentNameAvoidsAssignees(t *testing.T) {
 		if res.IsError {
 			t.Fatalf("create_ticket: %s", errorText(res))
 		}
+		held[name] = true
 	}
 
-	got, res := callTool[pickAgentNameResult](t, session, "pick_agent_name", map[string]any{"project": "DanceNote"})
-	if res.IsError {
-		t.Fatalf("pick_agent_name: %s", errorText(res))
+	known := map[string]bool{}
+	for _, name := range names.All {
+		known[name] = true
 	}
-	if got.Name != free {
-		t.Fatalf("expected the one unassigned name %q, got %q", free, got.Name)
+	for i := 0; i < 20; i++ {
+		got, res := callTool[pickAgentNameResult](t, session, "pick_agent_name", map[string]any{"project": "DanceNote"})
+		if res.IsError {
+			t.Fatalf("pick_agent_name: %s", errorText(res))
+		}
+		if held[got.Name] || !known[got.Name] {
+			t.Fatalf("expected a bundled name nobody holds, got %q", got.Name)
+		}
 	}
 }

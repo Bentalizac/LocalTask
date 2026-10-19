@@ -1,17 +1,21 @@
 package names
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBundledListIsUsable(t *testing.T) {
-	if len(All) < 100 {
-		t.Fatalf("expected the bundled list to hold over 100 names, got %d", len(All))
+	if len(All) < 1000 {
+		t.Fatalf("expected the bundled list to hold over 1000 names, got %d", len(All))
 	}
 	seen := make(map[string]bool, len(All))
 	for _, name := range All {
-		if seen[name] {
-			t.Fatalf("duplicate name %q", name)
+		key := strings.ToLower(name)
+		if seen[key] {
+			t.Fatalf("duplicate name %q (names compare without case)", name)
 		}
-		seen[name] = true
+		seen[key] = true
 	}
 }
 
