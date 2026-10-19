@@ -23,7 +23,7 @@ const instructions = `This server exposes a coding project's tickets, documentat
 
 Recommended workflow:
 1. Call get_project_context first when starting work on a project. It returns the description, tickets currently in progress (with who holds them), blocked tickets, available documentation, and current git branch/status in one call — cheaper than reconstructing that from list_tickets.
-2. Pick a short, stable agent name for yourself (e.g. "backend-1" or the role you were given) and pass it as "agent" on every write, so a human watching the board can see who is doing what. Several agents and subagents may share this board at once.
+2. Use one agent name for your whole session, and pass it as "agent" on every write, so a human watching the board can see who is doing what. Several agents and subagents may share this board at once. If your prompt gives you a name, use it. Otherwise call pick_agent_name once and keep the name it returns.
 3. To find work, call next_ready_tickets (ready, unassigned, dependencies met) or search_tickets/list_tickets to check whether relevant work already exists before creating anything.
 4. Before starting a ticket, call claim_ticket. If it fails because another agent holds it, leave it alone and pick another — don't work a ticket you haven't claimed.
 5. Call get_ticket to read its full detail: acceptance criteria, dependencies, constraints, related docs/code, and the activity log (notes from whoever worked it before).

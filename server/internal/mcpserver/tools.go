@@ -9,6 +9,7 @@ import (
 
 	"localtask/internal/document"
 	"localtask/internal/git"
+	"localtask/internal/names"
 	"localtask/internal/project"
 	"localtask/internal/ticket"
 )
@@ -68,6 +69,11 @@ func (s *server) registerTools(srv *mcp.Server) {
 		Name:        "next_ready_tickets",
 		Description: "List tickets that can be picked up right now: status ready, unassigned, and all dependencies done or cancelled. Ordered by priority, highest first.",
 	}, s.nextReadyTickets)
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "pick_agent_name",
+		Description: "Get a readable agent name to use when your prompt gives you none: a random Wheel of Time character's first name that no ticket on the project is assigned to. Call it once, then pass that name as agent on every write for the rest of your session.",
+	}, s.pickAgentName)
 }
 
 // --- list_projects ---
@@ -468,4 +474,24 @@ func (s *server) nextReadyTickets(_ context.Context, _ *mcp.CallToolRequest, arg
 		tickets = []ticket.Ticket{}
 	}
 	return nil, listTicketsResult{Tickets: tickets}, nil
+}
+
+// --- pick_agent_name ---
+
+type pickAgentNameResult struct {
+	Name string `json:"name" jsonschema:"the name to pass as agent on your writes"`
+}
+
+func (s *server) pickAgentName(_ context.Context, _ *mcp.CallToolRequest, args projectArgs) (*mcp.CallToolResult, pickAgentNameResult, error) {
+	p, err := s.project(args.Project)
+	if err != nil {
+		return nil, pickAgentNameResult{}, err
+	}
+	taken := make(map[string]bool)
+	for _, t := range p.ListTickets(project.TicketFilter{}) {
+		if t.Assignee != "" {
+			taken[t.Assignee] = true
+		}
+	}
+	return nil, pickAgentNameResult{Name: names.Pick(names.All, taken, nil)}, nil
 }

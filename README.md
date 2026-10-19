@@ -99,7 +99,8 @@ go build -o taskboard-mcp ./cmd/mcp
 Point your MCP client at the built binary with `-config` pointing to your
 `taskboard.config.yaml`. Tools: `list_projects`, `get_project`,
 `get_project_context`, `list_tickets`, `get_ticket`, `search_tickets`,
-`next_ready_tickets`, `claim_ticket`, `create_ticket`, `update_ticket`.
+`next_ready_tickets`, `claim_ticket`, `release_ticket`, `create_ticket`,
+`update_ticket`, `pick_agent_name`.
 
 ### Multiple agents
 
@@ -109,7 +110,8 @@ on the board's directory, re-reads `taskboard.json`, applies only its own
 change, and writes it back, so concurrent changes are never lost.
 `claim_ticket` atomically assigns a ticket to the calling agent, so two
 agents can't both pick up the same work. Agents pass an `agent` name on
-writes. Status/assignee changes and agents' `note`s go into each ticket's
+writes. An agent whose prompt gives it no name calls `pick_agent_name` for a
+random Wheel of Time character name that nobody on the board holds. Status/assignee changes and agents' `note`s go into each ticket's
 activity log, which the web UI's **Activity** page shows live. That page
 is laid out to work in a narrow side pane next to your agent sessions. Resources: `project://<name>`,
 `project://<name>/context`, `project://<name>/ticket/<id>`,

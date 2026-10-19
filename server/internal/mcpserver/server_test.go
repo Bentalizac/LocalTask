@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"localtask/internal/names"
 	"localtask/internal/project"
 	"localtask/internal/registry"
 	"localtask/internal/ticket"
@@ -419,5 +420,30 @@ func TestInstructionsCoverOrchestratedAgents(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("instructions lack %q", want)
 		}
+	}
+}
+
+func TestPickAgentNameAvoidsAssignees(t *testing.T) {
+	session, _ := newTestSession(t)
+
+	// Hold every bundled name but one, so the pick has exactly one answer.
+	free := names.All[len(names.All)-1]
+	for _, name := range names.All[:len(names.All)-1] {
+		_, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
+			"project":  "DanceNote",
+			"title":    "Held by " + name,
+			"assignee": name,
+		})
+		if res.IsError {
+			t.Fatalf("create_ticket: %s", errorText(res))
+		}
+	}
+
+	got, res := callTool[pickAgentNameResult](t, session, "pick_agent_name", map[string]any{"project": "DanceNote"})
+	if res.IsError {
+		t.Fatalf("pick_agent_name: %s", errorText(res))
+	}
+	if got.Name != free {
+		t.Fatalf("expected the one unassigned name %q, got %q", free, got.Name)
 	}
 }
