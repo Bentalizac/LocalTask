@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTickets } from '../hooks/useTickets'
 import { useJiraBaseUrl } from '../hooks/useJiraBaseUrl'
 import { JiraKeys } from '../components/JiraKeys'
-import { PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
+import { AssigneeChip, PriorityBadge, StatusBadge, TypeBadge } from '../components/Badges'
 import { TICKET_PRIORITIES, TICKET_STATUSES, TICKET_TYPES } from '../types'
 
 export function ListPage() {
@@ -115,6 +115,7 @@ export function ListPage() {
             <th>Status</th>
             <th>Priority</th>
             <th>Type</th>
+            <th>Assignee</th>
             <th>Progress</th>
             <th>Jira</th>
             <th>Tags</th>
@@ -142,6 +143,7 @@ export function ListPage() {
                 <td>
                   <TypeBadge type={t.type} />
                 </td>
+                <td>{t.assignee ? <AssigneeChip name={t.assignee} /> : '—'}</td>
                 <td>{criteria.length > 0 ? `${complete}/${criteria.length}` : '—'}</td>
                 <td>
                   {(t.jira ?? []).length > 0 ? <JiraKeys keys={t.jira} baseUrl={jiraBaseUrl} /> : '—'}
