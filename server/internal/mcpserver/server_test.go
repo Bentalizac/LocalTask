@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -22,6 +23,14 @@ import (
 // assertions). This exercises the real MCP wire protocol, not just Go
 // function calls, per the spec's "test MCP independently from the browser".
 func newTestSession(t *testing.T) (*mcp.ClientSession, string) {
+	t.Helper()
+	session, root, _ := newTestSessionWithProject(t)
+	return session, root
+}
+
+// newTestSessionWithProject is newTestSession that also returns the loaded
+// project, for tests that set up state the MCP tools can't, such as archiving.
+func newTestSessionWithProject(t *testing.T) (*mcp.ClientSession, string, *project.Project) {
 	t.Helper()
 	src := filepath.Join("..", "..", "testdata", "sample-project")
 	root := t.TempDir()
@@ -58,7 +67,7 @@ func newTestSession(t *testing.T) (*mcp.ClientSession, string) {
 	}
 	t.Cleanup(func() { session.Close() })
 
-	return session, root
+	return session, root, p
 }
 
 func callTool[Out any](t *testing.T, session *mcp.ClientSession, name string, args any) (Out, *mcp.CallToolResult) {
@@ -451,5 +460,47 @@ func TestPickAgentNameAvoidsAssignees(t *testing.T) {
 		if held[got.Name] || !known[got.Name] {
 			t.Fatalf("expected a bundled name nobody holds, got %q", got.Name)
 		}
+	}
+}
+
+func TestArchivedTicketsStayOutOfListings(t *testing.T) {
+	session, _, p := newTestSessionWithProject(t)
+	if n, err := p.ArchiveDone("test"); err != nil || n != 2 {
+		t.Fatalf("ArchiveDone: archived %d, err %v; the fixture has two done tickets", n, err)
+	}
+	ids := func(ts []ticket.Ticket) []string {
+		var out []string
+		for _, tk := range ts {
+			out = append(out, tk.ID)
+		}
+		return out
+	}
+
+	listed, res := callTool[listTicketsResult](t, session, "list_tickets", map[string]any{"project": "DanceNote"})
+	if res.IsError || slices.Contains(ids(listed.Tickets), "DN-38") || slices.Contains(ids(listed.Tickets), "DN-40") {
+		t.Fatalf("list_tickets should leave out archived tickets, got %v", ids(listed.Tickets))
+	}
+	done, res := callTool[listTicketsResult](t, session, "list_tickets", map[string]any{"project": "DanceNote", "status": "done"})
+	if res.IsError || len(done.Tickets) != 0 {
+		t.Fatalf("filtering by done should still leave out archived tickets, got %v", ids(done.Tickets))
+	}
+	found, res := callTool[listTicketsResult](t, session, "search_tickets", map[string]any{"project": "DanceNote", "query": "schema"})
+	if res.IsError || slices.Contains(ids(found.Tickets), "DN-38") {
+		t.Fatalf("search_tickets should leave out archived tickets, got %v", ids(found.Tickets))
+	}
+
+	archived, res := callTool[listTicketsResult](t, session, "list_archived_tickets", map[string]any{"project": "DanceNote"})
+	if res.IsError {
+		t.Fatalf("list_archived_tickets: %s", errorText(res))
+	}
+	got := ids(archived.Tickets)
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"DN-38", "DN-40"}) {
+		t.Fatalf("expected only the archived tickets, got %v", got)
+	}
+
+	one, res := callTool[ticket.Ticket](t, session, "get_ticket", map[string]any{"project": "DanceNote", "ticket_id": "DN-38"})
+	if res.IsError || one.ID != "DN-38" || one.ArchivedAt.IsZero() {
+		t.Fatalf("get_ticket should still return an archived ticket by id, got %+v", one)
 	}
 }

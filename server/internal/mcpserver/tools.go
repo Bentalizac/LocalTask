@@ -32,8 +32,13 @@ func (s *server) registerTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_tickets",
-		Description: "List a project's tickets, optionally filtered by status, priority, type, tag, or parent.",
+		Description: "List a project's tickets, optionally filtered by status, priority, type, tag, or parent. Archived tickets (finished work cleared from earlier waves) are left out; use list_archived_tickets for those.",
 	}, s.listTickets)
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_archived_tickets",
+		Description: "List a project's archived tickets: finished work cleared from the board between waves. Other listings and searches leave these out. Use it only when you need past work, such as checking how something was done before.",
+	}, s.listArchivedTickets)
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_ticket",
@@ -42,7 +47,7 @@ func (s *server) registerTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "search_tickets",
-		Description: "Search a project's tickets by matching text against title, description, tags, and Jira keys.",
+		Description: "Search a project's tickets by matching text against title, description, tags, and Jira keys. Archived tickets are left out; use list_archived_tickets for those.",
 	}, s.searchTickets)
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -239,7 +244,24 @@ func (s *server) listTickets(_ context.Context, _ *mcp.CallToolRequest, args lis
 		filter.Parent = &args.Parent
 	}
 
+	unarchived := false
+	filter.Archived = &unarchived
 	tickets := p.ListTickets(filter)
+	if tickets == nil {
+		tickets = []ticket.Ticket{}
+	}
+	return nil, listTicketsResult{Tickets: tickets}, nil
+}
+
+// --- list_archived_tickets ---
+
+func (s *server) listArchivedTickets(_ context.Context, _ *mcp.CallToolRequest, args projectArgs) (*mcp.CallToolResult, listTicketsResult, error) {
+	p, err := s.project(args.Project)
+	if err != nil {
+		return nil, listTicketsResult{}, err
+	}
+	archived := true
+	tickets := p.ListTickets(project.TicketFilter{Archived: &archived})
 	if tickets == nil {
 		tickets = []ticket.Ticket{}
 	}
@@ -278,8 +300,9 @@ func (s *server) searchTickets(_ context.Context, _ *mcp.CallToolRequest, args s
 		return nil, listTicketsResult{}, err
 	}
 	q := strings.ToLower(strings.TrimSpace(args.Query))
+	unarchived := false
 	var matches []ticket.Ticket
-	for _, t := range p.ListTickets(project.TicketFilter{}) {
+	for _, t := range p.ListTickets(project.TicketFilter{Archived: &unarchived}) {
 		if q == "" ||
 			strings.Contains(strings.ToLower(t.Title), q) ||
 			strings.Contains(strings.ToLower(t.Description), q) ||

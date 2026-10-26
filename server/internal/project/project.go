@@ -143,6 +143,9 @@ type TicketFilter struct {
 	Type     *ticket.Type
 	Tag      *string
 	Parent   *string
+	// Archived, when set, keeps only archived tickets (true) or only
+	// unarchived ones (false).
+	Archived *bool
 }
 
 func (f TicketFilter) matches(t ticket.Ticket) bool {
@@ -159,6 +162,9 @@ func (f TicketFilter) matches(t ticket.Ticket) bool {
 		return false
 	}
 	if f.Tag != nil && !t.HasTag(*f.Tag) {
+		return false
+	}
+	if f.Archived != nil && *f.Archived == t.ArchivedAt.IsZero() {
 		return false
 	}
 	return true

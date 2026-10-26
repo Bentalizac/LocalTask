@@ -100,7 +100,9 @@ Point your MCP client at the built binary with `-config` pointing to your
 `taskboard.config.yaml`. Tools: `list_projects`, `get_project`,
 `get_project_context`, `list_tickets`, `get_ticket`, `search_tickets`,
 `next_ready_tickets`, `claim_ticket`, `release_ticket`, `create_ticket`,
-`update_ticket`, `pick_agent_name`.
+`update_ticket`, `pick_agent_name`, `list_archived_tickets`. Ticket listings and
+searches leave out archived tickets (finished work cleared from the board
+between waves); `list_archived_tickets` returns them.
 
 ### Multiple agents
 
