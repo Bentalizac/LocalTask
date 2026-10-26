@@ -40,8 +40,10 @@ export function DashboardPage() {
   if (error) return <div className="page"><div className="error-banner">{error}</div></div>
   if (!tickets) return <div className="page"><div className="loading">Loading…</div></div>
 
-  const total = tickets.length
-  const done = tickets.filter((t) => t.status === 'done').length
+  // Completion covers the current wave: archived tickets were cleared from it.
+  const current = tickets.filter((t) => !t.archived_at)
+  const total = current.length
+  const done = current.filter((t) => t.status === 'done').length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
   const counts: Record<string, number> = {}
