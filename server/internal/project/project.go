@@ -282,6 +282,9 @@ func applyPatch(t ticket.Ticket, patch TicketPatch) ticket.Ticket {
 			Text: fmt.Sprintf("%s → %s", t.Status, *patch.Status),
 		})
 		t.Status = *patch.Status
+		if t.Status != ticket.StatusDone && t.Status != ticket.StatusCancelled {
+			t.ArchivedAt = time.Time{}
+		}
 	}
 	if patch.Priority != nil {
 		t.Priority = *patch.Priority
@@ -424,6 +427,31 @@ func (p *Project) ReleaseTicket(id, agent, note string) (*ticket.Ticket, error) 
 		return nil, err
 	}
 	return &updated, nil
+}
+
+// ArchiveDone archives every done ticket not archived yet, in one write,
+// and logs it on each. It returns how many it archived. Statuses don't
+// change, so nothing that depends on a ticket being done is affected.
+func (p *Project) ArchiveDone(author string) (int, error) {
+	archived := 0
+	err := p.mutate(func(tb *Taskboard) error {
+		at := now()
+		for i, t := range tb.Tickets {
+			if t.Status != ticket.StatusDone || !t.ArchivedAt.IsZero() {
+				continue
+			}
+			t.ArchivedAt = at
+			t.UpdatedAt = at
+			t.AddActivity(ticket.ActivityEntry{At: at, Author: author, Kind: ticket.ActivityNote, Text: "archived"})
+			tb.Tickets[i] = t
+			archived++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return archived, nil
 }
 
 // ReadyTickets returns tickets an agent could pick up right now: status

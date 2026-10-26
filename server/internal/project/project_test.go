@@ -413,3 +413,54 @@ func TestReleaseTicket(t *testing.T) {
 		t.Fatalf("another agent should be able to claim after release: %v", err)
 	}
 }
+
+func TestArchiveDone(t *testing.T) {
+	root := copyTestProject(t)
+	p, err := LoadProject("DanceNote", root, root)
+	if err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	dep, _ := p.CreateTicket(ticket.Ticket{Title: "finished", Status: ticket.StatusDone}, "")
+	open, _ := p.CreateTicket(ticket.Ticket{Title: "open", Status: ticket.StatusReady}, "")
+	waiter, _ := p.CreateTicket(ticket.Ticket{Title: "waits on finished", Status: ticket.StatusReady, DependsOn: []string{dep.ID}}, "")
+
+	before := 0
+	for _, tk := range p.ListTickets(TicketFilter{}) {
+		if tk.Status == ticket.StatusDone {
+			before++
+		}
+	}
+	n, err := p.ArchiveDone("web")
+	if err != nil {
+		t.Fatalf("ArchiveDone: %v", err)
+	}
+	if n != before {
+		t.Fatalf("expected %d archived, got %d", before, n)
+	}
+	got, _ := p.GetTicket(dep.ID)
+	if got.ArchivedAt.IsZero() || got.Status != ticket.StatusDone {
+		t.Fatalf("expected an archived ticket still done, got %+v", got)
+	}
+	if last := got.Activity[len(got.Activity)-1]; last.Text != "archived" || last.Author != "web" {
+		t.Fatalf("expected an archived log entry, got %+v", last)
+	}
+	if o, _ := p.GetTicket(open.ID); !o.ArchivedAt.IsZero() {
+		t.Fatal("archived a ticket that isn't done")
+	}
+	if !slices.ContainsFunc(p.ReadyTickets(), func(tk ticket.Ticket) bool { return tk.ID == waiter.ID }) {
+		t.Fatal("a dependency on an archived ticket should still count as met")
+	}
+
+	if again, _ := p.ArchiveDone("web"); again != 0 {
+		t.Fatalf("expected nothing left to archive, got %d", again)
+	}
+
+	reopen := ticket.StatusInProgress
+	reopened, err := p.UpdateTicket(dep.ID, TicketPatch{Status: &reopen})
+	if err != nil {
+		t.Fatalf("UpdateTicket: %v", err)
+	}
+	if !reopened.ArchivedAt.IsZero() {
+		t.Fatal("a ticket moved out of done should lose archived_at")
+	}
+}

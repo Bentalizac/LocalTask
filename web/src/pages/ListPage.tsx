@@ -18,6 +18,8 @@ export function ListPage() {
   const [tag, setTag] = useState('')
   const [search, setSearch] = useState('')
   const [parent, setParent] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const archivedCount = (tickets ?? []).filter((t) => t.archived_at).length
 
   const parents = useMemo(
     () => Array.from(new Set((tickets ?? []).map((t) => t.parent).filter((p): p is string => !!p))),
@@ -28,6 +30,7 @@ export function ListPage() {
     if (!tickets) return []
     const q = search.trim().toLowerCase()
     return tickets.filter((t) => {
+      if (t.archived_at && !showArchived) return false
       if (status && t.status !== status) return false
       if (priority && t.priority !== priority) return false
       if (type && t.type !== type) return false
@@ -38,7 +41,7 @@ export function ListPage() {
       }
       return true
     })
-  }, [tickets, status, priority, type, parent, tag, search])
+  }, [tickets, status, priority, type, parent, tag, search, showArchived])
 
   const allTags = useMemo(
     () => Array.from(new Set((tickets ?? []).flatMap((t) => t.tags ?? []))),
@@ -105,6 +108,12 @@ export function ListPage() {
             ))}
           </select>
         )}
+        {archivedCount > 0 && (
+          <label className="form-check filters-check">
+            <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+            Show archived ({archivedCount})
+          </label>
+        )}
       </div>
 
       <table className="ticket-table">
@@ -133,7 +142,10 @@ export function ListPage() {
                 }
               >
                 <td className="ticket-table-id">{t.id}</td>
-                <td>{t.title}</td>
+                <td>
+                  {t.title}
+                  {t.archived_at && <span className="tag archived-tag">archived</span>}
+                </td>
                 <td>
                   <StatusBadge status={t.status} />
                 </td>

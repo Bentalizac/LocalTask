@@ -104,6 +104,11 @@ type Ticket struct {
 	Assignee  string    `json:"assignee,omitempty"`
 	UpdatedAt time.Time `json:"updated_at,omitzero"`
 
+	// ArchivedAt marks a finished ticket cleared from view between waves of
+	// work. Its status stays done, so dependencies, claims and metrics still
+	// treat it as finished. A ticket that leaves done or cancelled loses it.
+	ArchivedAt time.Time `json:"archived_at,omitzero"`
+
 	// Activity is a capped, newest-last log of what happened to the ticket:
 	// status/assignee changes recorded automatically, plus free-text notes
 	// agents leave for whoever picks the work up next.

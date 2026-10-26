@@ -58,6 +58,8 @@ export interface Ticket {
   jira?: string[]
   assignee?: string
   updated_at?: string
+  // Set when a finished ticket is cleared from view; its status stays done.
+  archived_at?: string
   activity?: ActivityEntry[]
 }
 

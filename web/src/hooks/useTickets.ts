@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createTicket, listTickets, updateTicket, type CreateTicketInput } from '../api'
+import { archiveDone as archiveDoneRequest, createTicket, listTickets, updateTicket, type CreateTicketInput } from '../api'
 import type { Ticket, TicketStatus } from '../types'
 import { usePolling } from './usePolling'
 
@@ -71,5 +71,16 @@ export function useTickets(project: string) {
     setTickets((cur) => (cur ? [...cur, created] : [created]))
   }
 
-  return { tickets, error, reload, setStatus, create }
+  async function archiveDone(): Promise<number> {
+    pendingWrites.current++
+    try {
+      const { archived } = await archiveDoneRequest(project)
+      setTickets(await listTickets(project))
+      return archived
+    } finally {
+      pendingWrites.current--
+    }
+  }
+
+  return { tickets, error, reload, setStatus, create, archiveDone }
 }

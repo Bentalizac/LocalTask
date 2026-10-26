@@ -94,7 +94,7 @@ export function GraphPage() {
       </div>
     )
 
-  const live = tickets.filter((t) => t.status !== 'cancelled')
+  const live = tickets.filter((t) => t.status !== 'cancelled' && !t.archived_at)
   const done = live.filter((t) => t.status === 'done').length
   const byId = new Map(tickets.map((t) => [t.id, t]))
   const base = `/projects/${encodeURIComponent(project)}`

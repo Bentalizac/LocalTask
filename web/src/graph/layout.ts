@@ -256,19 +256,22 @@ function placeGroup(shown: Ticket[], width: number, byId: Map<string, Ticket>) {
 }
 
 // layoutGraph turns a project's tickets into positioned clusters for a group
-// area `width` CSS pixels wide. Cancelled tickets are left out.
+// area `width` CSS pixels wide. Cancelled tickets are left out. Archived
+// tickets aren't drawn, but a dependency on one still shows as met, and an
+// archived feature still heads its unarchived subtasks.
 export function layoutGraph(all: Ticket[], width: number, opts: GraphOptions = {}): Cluster[] {
   const tickets = all.filter((t) => t.status !== 'cancelled')
   const byId = new Map(tickets.map((t) => [t.id, t]))
+  const live = tickets.filter((t) => !t.archived_at)
 
-  const parents = new Set(tickets.flatMap((t) => (t.parent && byId.has(t.parent) ? [t.parent] : [])))
+  const parents = new Set(live.flatMap((t) => (t.parent && byId.has(t.parent) ? [t.parent] : [])))
   const features = tickets.filter((t) => parents.has(t.id) && t.type !== 'epic')
   const featureIds = new Set(features.map((f) => f.id))
 
   // Each ticket that isn't itself a feature belongs to its parent feature's
   // cluster, or to the "Unparented" cluster ('').
   const featureOf = new Map<string, string>()
-  for (const t of tickets) {
+  for (const t of live) {
     if (featureIds.has(t.id)) continue
     featureOf.set(t.id, t.parent && featureIds.has(t.parent) ? t.parent : '')
   }
@@ -276,13 +279,13 @@ export function layoutGraph(all: Ticket[], width: number, opts: GraphOptions = {
   const order = featureOrder(
     features.map((f) => f.id),
     featureOf,
-    tickets,
+    live,
   )
   if ([...featureOf.values()].includes('')) order.push('')
 
   return order.map((fid) => {
     const feature = byId.get(fid)
-    const members = tickets.filter((t) => featureOf.get(t.id) === fid)
+    const members = live.filter((t) => featureOf.get(t.id) === fid)
     const after = [
       ...new Set(
         members.flatMap((t) =>

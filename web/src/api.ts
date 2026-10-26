@@ -80,6 +80,11 @@ export function updateTicket(
   )
 }
 
+// Archives every done ticket in the project, clearing the board's Done column.
+export function archiveDone(project: string): Promise<{ archived: number }> {
+  return request(`/api/projects/${encodeURIComponent(project)}/archive-done`, { method: 'POST' })
+}
+
 export function getGit(project: string): Promise<GitInfo> {
   return request(`/api/projects/${encodeURIComponent(project)}/git`)
 }

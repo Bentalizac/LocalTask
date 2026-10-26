@@ -79,6 +79,21 @@ func (s *Server) handleUpdateTicket(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// handleArchiveDone archives every done ticket in the project, clearing the
+// board's Done column between waves of work.
+func (s *Server) handleArchiveDone(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.project(w, r)
+	if !ok {
+		return
+	}
+	n, err := p.ArchiveDone(webAuthor)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int{"archived": n})
+}
+
 func parseTicketFilter(r *http.Request) (project.TicketFilter, error) {
 	q := r.URL.Query()
 	var f project.TicketFilter

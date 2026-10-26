@@ -237,3 +237,29 @@ func TestListDocs(t *testing.T) {
 		t.Fatalf("unexpected docs list: %+v", docs)
 	}
 }
+
+func TestArchiveDone(t *testing.T) {
+	s, _ := newTestServer(t)
+
+	rec := doRequest(t, s, "PATCH", "/api/projects/DanceNote/tickets/DN-30", map[string]any{"status": "done"})
+	if rec.Code != 200 {
+		t.Fatalf("marking DN-30 done: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = doRequest(t, s, "POST", "/api/projects/DanceNote/archive-done", nil)
+	if rec.Code != 200 {
+		t.Fatalf("archive-done: %d %s", rec.Code, rec.Body.String())
+	}
+	var out struct{ Archived int }
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || out.Archived < 1 {
+		t.Fatalf("expected at least one archived ticket, got %s", rec.Body.String())
+	}
+
+	rec = doRequest(t, s, "GET", "/api/projects/DanceNote/tickets/DN-30", nil)
+	var tk struct {
+		Status     string `json:"status"`
+		ArchivedAt string `json:"archived_at"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &tk); err != nil || tk.Status != "done" || tk.ArchivedAt == "" {
+		t.Fatalf("expected DN-30 done and archived, got %s", rec.Body.String())
+	}
+}

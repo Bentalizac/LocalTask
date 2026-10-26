@@ -9,7 +9,9 @@ import type { TicketStatus } from "../types";
 
 export function BoardPage() {
   const { project = "" } = useParams<{ project: string }>();
-  const { tickets, error, setStatus, create } = useTickets(project);
+  const { tickets, error, setStatus, create, archiveDone } = useTickets(project);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const jiraBaseUrl = useJiraBaseUrl(project);
   const [showNew, setShowNew] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<TicketStatus | null>(
@@ -29,6 +31,22 @@ export function BoardPage() {
       </div>
     );
 
+  // Archived tickets are cleared from the board; their status stays done.
+  const visible = tickets.filter((t) => !t.archived_at);
+
+  async function handleArchiveDone(count: number) {
+    if (!window.confirm(`Archive ${count} done ticket${count === 1 ? "" : "s"}? They leave the board but stay done, and List can still show them.`)) return;
+    setArchiving(true);
+    setArchiveError(null);
+    try {
+      await archiveDone();
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : "Failed to archive tickets");
+    } finally {
+      setArchiving(false);
+    }
+  }
+
   function handleDrop(e: DragEvent<HTMLDivElement>, status: TicketStatus) {
     e.preventDefault();
     setDragOverColumn(null);
@@ -45,9 +63,11 @@ export function BoardPage() {
         </button>
       </div>
 
+      {archiveError && <div className="error-banner">{archiveError}</div>}
+
       <div className="board">
         {BOARD_COLUMNS.map((status) => {
-          const columnTickets = tickets.filter((t) => t.status === status);
+          const columnTickets = visible.filter((t) => t.status === status);
           const style = {
             "--status-color": `var(--status-${status})`,
           } as CSSProperties;
@@ -70,8 +90,20 @@ export function BoardPage() {
                 <span className="board-column-title">
                   {status.replace("_", " ")}
                 </span>
-                <span className="board-column-count">
-                  {columnTickets.length}
+                <span className="board-column-meta">
+                  {status === "done" && columnTickets.length > 0 && (
+                    <button
+                      className="btn btn-sm board-column-action"
+                      onClick={() => handleArchiveDone(columnTickets.length)}
+                      disabled={archiving}
+                      title="Clear every done ticket from the board"
+                    >
+                      {archiving ? "Archiving…" : "Archive done"}
+                    </button>
+                  )}
+                  <span className="board-column-count">
+                    {columnTickets.length}
+                  </span>
                 </span>
               </div>
               <div className="board-column-cards">
