@@ -358,18 +358,18 @@ func TestJiraKeysCreateSearchAndValidate(t *testing.T) {
 	created, res := callTool[ticket.Ticket](t, session, "create_ticket", map[string]any{
 		"project": "DanceNote",
 		"title":   "Part of a Jira story",
-		"jira":    []string{"RT-1234"},
+		"jira":    []string{"PROJ-123"},
 	})
 	if res.IsError {
 		t.Fatalf("create_ticket: %s", errorText(res))
 	}
-	if len(created.Jira) != 1 || created.Jira[0] != "RT-1234" {
+	if len(created.Jira) != 1 || created.Jira[0] != "PROJ-123" {
 		t.Fatalf("expected jira key on created ticket, got %+v", created.Jira)
 	}
 
 	out, res := callTool[listTicketsResult](t, session, "search_tickets", map[string]any{
 		"project": "DanceNote",
-		"query":   "rt-1234",
+		"query":   "proj-123",
 	})
 	if res.IsError || len(out.Tickets) != 1 || out.Tickets[0].ID != created.ID {
 		t.Fatalf("expected search by jira key to find %s, got %+v", created.ID, out)

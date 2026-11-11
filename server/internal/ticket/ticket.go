@@ -95,7 +95,7 @@ type Ticket struct {
 	Tags               []string              `json:"tags,omitempty"`
 	RelatedDocs        []string              `json:"related_docs,omitempty"`
 	RelatedCode        []string              `json:"related_code,omitempty"`
-	// Jira lists the keys of the Jira issues (e.g. "RT-1234") this ticket
+	// Jira lists the keys of the Jira issues (e.g. "PROJ-123") this ticket
 	// is part of. LocalTask only stores and links them; it never calls Jira.
 	Jira []string `json:"jira,omitempty"`
 

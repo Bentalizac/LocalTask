@@ -1,4 +1,4 @@
-// Splits free-form input ("rt-12, RT-34 RT-56") into unique uppercase Jira
+// Splits free-form input ("proj-12, PROJ-34 PROJ-56") into unique uppercase Jira
 // keys, in the order first written.
 export function parseJiraKeys(text: string): string[] {
   const keys = text

@@ -334,7 +334,7 @@ type createTicketArgs struct {
 	Tags               []string                     `json:"tags,omitempty"`
 	RelatedDocs        []string                     `json:"related_docs,omitempty"`
 	RelatedCode        []string                     `json:"related_code,omitempty"`
-	Jira               []string                     `json:"jira,omitempty" jsonschema:"keys of the Jira issues this ticket is part of, e.g. RT-1234"`
+	Jira               []string                     `json:"jira,omitempty" jsonschema:"keys of the Jira issues this ticket is part of, e.g. PROJ-123"`
 	Assignee           string                       `json:"assignee,omitempty" jsonschema:"agent to assign the ticket to"`
 	Agent              string                       `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`
 }
@@ -388,7 +388,7 @@ type updateTicketArgs struct {
 	Tags               *[]string                     `json:"tags,omitempty"`
 	RelatedDocs        *[]string                     `json:"related_docs,omitempty"`
 	RelatedCode        *[]string                     `json:"related_code,omitempty"`
-	Jira               *[]string                     `json:"jira,omitempty" jsonschema:"the full replacement list of Jira issue keys this ticket is part of, e.g. RT-1234"`
+	Jira               *[]string                     `json:"jira,omitempty" jsonschema:"the full replacement list of Jira issue keys this ticket is part of, e.g. PROJ-123"`
 	Assignee           *string                       `json:"assignee,omitempty" jsonschema:"set the assignee; to release a ticket, call release_ticket"`
 	Note               *string                       `json:"note,omitempty" jsonschema:"a progress or handoff note to append to the ticket's activity log"`
 	Agent              string                        `json:"agent,omitempty" jsonschema:"your agent name, recorded in the ticket's activity log"`

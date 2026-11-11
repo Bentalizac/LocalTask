@@ -101,7 +101,7 @@ export function NewTicketModal({ onClose, onCreate }: Props) {
           </div>
           <div className="form-row">
             <label htmlFor="jira">Jira issues</label>
-            <input id="jira" value={jira} onChange={(e) => setJira(e.target.value)} placeholder="RT-1234, RT-1250" />
+            <input id="jira" value={jira} onChange={(e) => setJira(e.target.value)} placeholder="PROJ-123, PROJ-150" />
           </div>
           {error && <div className="error-banner">{error}</div>}
           <div className="form-actions">

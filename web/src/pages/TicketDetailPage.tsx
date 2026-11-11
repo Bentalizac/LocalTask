@@ -372,7 +372,7 @@ export function TicketDetailPage() {
                 className="title-input"
                 value={draft?.jira ?? ''}
                 onChange={(e) => setDraft((d) => (d ? { ...d, jira: e.target.value } : d))}
-                placeholder="RT-1234, RT-1250"
+                placeholder="PROJ-123, PROJ-150"
               />
             ) : (ticket.jira ?? []).length === 0 ? (
               <div className="empty-note">No linked Jira issues.</div>

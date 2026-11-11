@@ -197,7 +197,7 @@ before it's configured.
 ## Jira links
 
 A ticket's `jira` field lists the keys of the Jira issues it's part of, such
-as `["RT-1234", "RT-1250"]`. Keys show as chips on the board, the list, and
+as `["PROJ-123", "PROJ-150"]`. Keys show as chips on the board, the list, and
 the ticket page. Ticket search matches them too.
 
 Set `jira_base_url` at the top of `taskboard.config.yaml` to make each chip

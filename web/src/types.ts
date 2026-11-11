@@ -54,7 +54,7 @@ export interface Ticket {
   tags?: string[]
   related_docs?: string[]
   related_code?: string[]
-  // Keys of the Jira issues this ticket is part of, e.g. "RT-1234".
+  // Keys of the Jira issues this ticket is part of, e.g. "PROJ-123".
   jira?: string[]
   assignee?: string
   updated_at?: string
